@@ -33,7 +33,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/static/", fileHandler)
 	mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		http.ServeFile(writer, request, "./static/simulator/xrd_simulator/XRD_simulator.html")
+		http.Redirect(writer, request, "/static/simulator/xrd_simulator/XRD_simulator.html", http.StatusMovedPermanently)
 	})
 	server := &http.Server{
 		Addr:    ":80",
