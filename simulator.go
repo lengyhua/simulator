@@ -19,14 +19,17 @@ import (
 */
 
 var extensionToContentType = map[string]string{
-	".html": "text/html; charset=utf-8",
-	".css":  "text/css; charset=utf-8",
-	".js":   "application/javascript",
-	".xml":  "text/xml; charset=utf-8",
-	".jpg":  "image/jpeg",
-	".svg":  "image/svg+xml",
-	".png":  "image/png",
-	".mp4":  "video/mp4",
+	".html":  "text/html; charset=utf-8",
+	".css":   "text/css; charset=utf-8",
+	".js":    "application/javascript",
+	".xml":   "text/xml; charset=utf-8",
+	".jpg":   "image/jpeg",
+	".svg":   "image/svg+xml",
+	".png":   "image/png",
+	".mp4":   "video/mp4",
+	".woff2": "font/woff2",
+	".woff":  "font/woff",
+	".ttf":   "font/ttf",
 }
 
 func main() {

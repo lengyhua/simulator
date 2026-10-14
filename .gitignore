@@ -16,3 +16,6 @@
 /htmlbind/
 .idea/
 .omc/
+
+# WorkBuddy local workspace (memory + diagnostic scripts, not build output)
+.workbuddy/

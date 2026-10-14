@@ -51,7 +51,7 @@ const specimen_reset_fn = () => {
     $("#end-angle-group").css("opacity", "0");
     $("#scantime-label").toggleClass("label-disabled", true);
     $("#scantime-div").toggleClass("div-disabled", true);
-    $("#scantime-val").html('-');
+    $("#scantime-val").html('—');
     //    deactivate_round_btn("#btn-standby", "#standby-label");
     //    $("#btn-standby").toggleClass("green-halo", false);
     //    deactivate_sqr_btn("#btn-power", "off", "#power-label");
@@ -79,6 +79,89 @@ const specimen_reset_fn = () => {
     switch_step_time = true;
 }
 // ======================= END ======================== //
+// ======================= START DARK-THEME RECOLOR ======================== //
+/*
+ * XRD_radiometer_1.js 注入的仪器插画是为浅色背景设计的（白色满屏底 + 深灰仪器）。
+ * 深色主题下做语义级映射：场景（底/墙/地板）变暗，仪器主体变亮，
+ * X 射线光束、指示灯、红点等强调色保留原样。
+ * #FFFFFF 作为 fill（背景矩形）变暗、作为 stop-color（高光）变亮，故按属性分开建表。
+ */
+const DIAGRAM_FILL_DARK_MAP = {
+    // 场景：原浅色 → 深色
+    '#FFFFFF': '#1E2028', // 满屏背景矩形
+    '#BFBAB8': '#2E3242', '#E6E6E5': '#3A3F5C', // 墙
+    '#A1A4A1': '#343848', '#4E534B': '#1B1E29', // 地板
+    '#3E3D3C': '#232636',
+    // 仪器主体：原深灰 → 亮灰
+    '#595956': '#8B93A8', '#73736F': '#6E7490', '#323132': '#565B6E',
+    '#353434': '#585D70', '#504140': '#7A6E74', '#675B5F': '#8A7E84',
+    '#3A3530': '#5E564F', '#39291C': '#6B5A4C', '#1C1612': '#4A4238',
+    '#000000': '#4A5064', '#121228': '#121228',
+    // 浅色部件/高光 → 冷色浅灰
+    '#EAEAE7': '#C9CEDD', '#EAEAE6': '#C9CEDD', '#F3F3F3': '#E6E8F0',
+    '#B9B9B4': '#AEB4C6', '#B9B6B6': '#AEB4C6', '#BDBDB5': '#B4BACB',
+    '#D0D0D0': '#C0C6D8', '#999999': '#9BA3C2', '#A0A19D': '#A6ADC2',
+    '#95958F': '#9BA3C2', '#AEAEA6': '#B4BACB'
+    // 保留不动：#E3E995(X射线光束) #FF0000(红点) #8D7F7E(红点余烬态) #95D4E9(蓝色部件)
+};
+const DIAGRAM_STROKE_DARK_MAP = {
+    '#979797': '#5A6178', '#777776': '#5A6178', '#787A79': '#5A6178',
+    '#73736F': '#5A6178', '#7C7A7A': '#5A6178', '#6E6E6C': '#5A6178',
+    '#676766': '#5A6178', '#4D4C49': '#5A6178', '#444143': '#5A6178',
+    '#515151': '#5A6178', '#656562': '#5A6178', '#707070': '#5A6178',
+    '#595956': '#8B93A8', '#FFFFFF': '#C9CEDD', '#FFFCFD': '#C9CEDD'
+    // 保留不动：#FFBE00(琥珀指示灯) #FF0000 #FF000080
+};
+const DIAGRAM_STOP_DARK_MAP = {
+    // 墙/地板
+    '#BFBAB8': '#2E3242', '#E6E6E5': '#3A3F5C',
+    '#A1A4A1': '#343848', '#4E534B': '#1B1E29', '#3E3D3C': '#232636',
+    // 中灰渐变 → 板岩灰
+    '#959595': '#5E6478', '#B9AFB7': '#8E93AC', '#A4A49D': '#767C92',
+    '#BFBFBF': '#AAB2C5', '#8C8C8C': '#6E7490', '#D7D7D7': '#C0C6D8',
+    '#AAAAA1': '#8B93A8', '#D7D6D6': '#C0C6D8', '#B6B6AF': '#9BA3C2',
+    '#DBDBDB': '#C9CEDD', '#656260': '#7E8496', '#383436': '#4E5266',
+    '#716F67': '#8A8F9C', '#9E9E9D': '#7E8496', '#9C9C9C': '#7A8093',
+    '#C8C8C5': '#AAB2C5', '#D3D0C7': '#B4BACB', '#B4B4B2': '#9BA3C2',
+    '#9E9A87': '#8E8A7E', '#878784': '#7E8496', '#88888B': '#7E8290',
+    '#ADAEB2': '#9BA3C2', '#3D3B33': '#4A463C', '#6C6C64': '#7E8496',
+    '#F2ECEC': '#E6E8F0', '#68686A': '#7E8290', '#6B6C6F': '#848AA0',
+    '#666666': '#7E8496', '#8A8A8A': '#9BA3C2', '#585858': '#6E7490',
+    '#6D6D6D': '#848AA0', '#4F4F4F': '#666C82', '#333333': '#333849',
+    '#151515': '#12141C', '#C3C3C3': '#9BA3C2', '#545454': '#6A6F88',
+    // 米/棕渐变 → 灰暖调
+    '#5A5652': '#6E6880', '#C7C1B3': '#A6A2B8', '#C5C5BB': '#A4A4B4',
+    '#AD9E8D': '#8E8478', '#C8C2B8': '#A8A4B0', '#BFB5A0': '#A29A88',
+    '#949388': '#84898F', '#70706A': '#5E5A66', '#48433B': '#4E483C',
+    '#463F36': '#4A4438', '#4C4840': '#504A40', '#545241': '#565242',
+    '#706C64': '#6E6A60', '#BBA695': '#A89E96', '#886F5D': '#7E6A5E',
+    '#B8BAAB': '#A8AAB0', '#CFD4C4': '#BEC2CE',
+    // 白/亮渐变 → 冷白
+    '#FFFFFF': '#E6E8F0', '#F0F0F0': '#D8DCE8', '#E4E4E4': '#C9CEDD',
+    '#BEBEBE': '#AAB2C5', '#F3F1EA': '#DEDCD2', '#D2D2D2': '#C0C6D8',
+    '#F6F6F5': '#E2E4EC', '#F4F4F2': '#DEDFDC', '#B6B6AE': '#A6A6AE',
+    '#F0F0EE': '#D8DAD8', '#EAEAE7': '#CACBD2', '#F8F5F3': '#E8E6F0',
+    '#A6A19B': '#9A96A0', '#F6F4F1': '#E4E2EC', '#EAE7DF': '#D2D0D8',
+    '#FFFDFC': '#F0EFF5'
+};
+const recolorDiagramForDark = () => {
+    const maps = {
+        'fill': DIAGRAM_FILL_DARK_MAP,
+        'stroke': DIAGRAM_STROKE_DARK_MAP,
+        'stop-color': DIAGRAM_STOP_DARK_MAP
+    };
+    const svg = document.getElementById('svg-diagram');
+    if (!svg) return;
+    svg.querySelectorAll('*').forEach(el => {
+        for (const attr in maps) {
+            const cur = el.getAttribute(attr);
+            if (!cur) continue;
+            const target = maps[attr][cur.trim().toUpperCase()];
+            if (target) el.setAttribute(attr, target);
+        }
+    });
+};
+// =======================  END DARK-THEME RECOLOR  ==================== //
 // ======================= START ======================== //
 for (let i = 0; i <= promises_total + 1; i++) {
     sprites[i] = new Array();
@@ -93,6 +176,7 @@ const do_when_done = (max, str_id, images_arr) => {
         case 1:
             i_promise_file(1, `js/XRD_cartesian_plane_`, `js_script`, sprites[promise_fullfilled_num], `js`);
             $("#svg-diagram").html(svg_radiometer);
+            recolorDiagramForDark();
             break;
         case 2:
             $("#loading-modal").toggleClass("totally-hidden", true);
@@ -266,10 +350,10 @@ $('.btn').click(function (e) {
     switch (e.target.id) {
         case "btn-doors":
             if (e.target.value == "off") {
-                $("#btn-doors").html("OPEN");
+                $("#btn-doors").html("开门");
                 close_doors_fn();
             } else {
-                $("#btn-doors").html("CLOSE");
+                $("#btn-doors").html("关门");
                 doors_fn();
             }
             break;
@@ -278,14 +362,19 @@ $('.btn').click(function (e) {
             $("#top-instructions-txt").html("");
             if (e.target.value == "on") {
                 $("#svg-curve").html(cartesian_axis);
-                $(this).html("SCANNING");
+                $(this).html("扫描中…");
                 $("#btn-shutter").toggleClass("shutter-active", true);
                 $("#x-ray-in").toggleClass("ray-r", true);
                 $("#svg-diagram line#ray-l").css("opacity", "1");
-                $("#btn-shutter").html("OPEN");
+                $("#btn-shutter").html("打开");
                 let y_child = (chosen_specimen * 3) + (steptime_arr_pos + 1);
-                $(`#y_axis g:nth-of-type(${y_child})`).toggleClass("y-visible", true);
-                $(`#y_axis g:nth-of-type(${y_child})`).toggleClass("y-group", false);
+                // guard: if the specimen / rate were never selected this becomes NaN and
+                // "#y_axis g:nth-of-type(NaN)" is an invalid selector that makes jQuery
+                // throw, aborting the rest of this block (ticks stayed hidden).
+                if (Number.isFinite(y_child)) {
+                    $(`#y_axis g:nth-of-type(${y_child})`).toggleClass("y-visible", true);
+                    $(`#y_axis g:nth-of-type(${y_child})`).toggleClass("y-group", false);
+                }
                 $("#degree-l text").toggleClass("y-visible", true);
                 $("#degree-r text").toggleClass("y-visible", true);
                 $("#degree-l text").html(`${start_angle}&#176;`);
@@ -416,7 +505,7 @@ const increasePower_fn = () => {
         $("#btn-standby").toggleClass("green-halo", true);
         activate_sqr_btn("#btn-power", "#power-label");
         $("#btn-power").trigger("click");
-        $("#btn-power").html("ON");
+        $("#btn-power").html("开");
         next_step();
     }
 
@@ -523,6 +612,11 @@ const set_angles_fun = (start_angl = start_angle, end_angl = end_angle) => {
     $("#start-angle-line").css("transform", `rotate(${new_start}deg)`);
     $("#start-mask").css("transform", `rotate(${new_start-new_end}deg)`);
     $("#end-angle-group").css("transform", `rotate(${new_end}deg)`);
+    // keep the readout on the diagram in sync with the configured range
+    const range_txt = `2θ 范围：${start_angle}&#176; – ${end_angle}&#176;`;
+    if ($("#range-2theta").html() !== range_txt) {
+        $("#range-2theta").html(range_txt);
+    }
     $("#detector-l").css("transform", `translate(-2.2vw, -2.3vw) rotate(${angle_device_l}deg)`);
     $("#detector-r").css("transform", `translate(-4.4vw, -4.4vw) rotate(${angle_device_r}deg)`);
     //    console.log({
@@ -552,7 +646,7 @@ const increment_curve_fun = () => {
 // ======================= START ======================== //
 const scan_time_fun = () => {
     scan_time = (end_angle - start_angle) / steptime_val;
-    (steptime_val != 0) ? $("#scantime-val").html(scan_time + " secs"): $("#scantime-val").html('-');
+    (steptime_val != 0) ? $("#scantime-val").html(scan_time + " 秒"): $("#scantime-val").html('—');
 }
 // ======================= END ======================== //
 
@@ -560,8 +654,8 @@ const scan_back_fun = () => {
     $("#btn-shutter").toggleClass("shutter-active", false);
     $("#x-ray-in").toggleClass("ray-r", false);
     $("#svg-diagram line#ray-l").css("opacity", "0");
-    $("#btn-shutter").html("CLOSED");
-    $("#btn-start-scan").html("START SCAN");
+    $("#btn-shutter").html("关闭");
+    $("#btn-start-scan").html("开始扫描");
     deactivate_sqr_btn("#btn-start-scan");
     if (scan_angle > start_angle) {
         increment_angle--;
@@ -680,7 +774,7 @@ function saveXRDIMG(the_svg) {
         e;
     /// the key here is to set the download attribute of the a tag
     let specimen_title = $(`#specimen option[value=${chosen_specimen}]`).text();
-    lnk.download = `Diffractogram of ${specimen_title}, from the XRD simulator.jpg`;
+    lnk.download = `${specimen_title}的衍射图谱.jpg`;
     /// convert canvastoPrint content to data-uri for link. When download
     /// attribute is set the content pointed to by link will be
     /// pushed as "download" in HTML5 capable browsers
