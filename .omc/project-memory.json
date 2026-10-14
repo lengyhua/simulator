@@ -1,0 +1,83 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1791960024661,
+  "projectRoot": "D:\\Projects\\simulator",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Go",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "go.mod"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "go",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "static"
+    ],
+    "gitBranches": {
+      "defaultBranch": "master",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "static": {
+      "path": "static",
+      "purpose": "Static files",
+      "fileCount": 1,
+      "lastAccessed": 1791960024596,
+      "keyFiles": [
+        "simulator.html"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "simulator.go",
+      "accessCount": 4,
+      "lastAccessed": 1791980175162,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 1,
+      "lastAccessed": 1791978669900,
+      "type": "file"
+    },
+    {
+      "path": "go.mod",
+      "accessCount": 1,
+      "lastAccessed": 1791978670086,
+      "type": "file"
+    },
+    {
+      "path": "static/simulator.html",
+      "accessCount": 1,
+      "lastAccessed": 1791978759677,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

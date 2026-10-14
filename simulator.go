@@ -33,8 +33,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/static/", fileHandler)
 	mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		path := "./static/simulator.html"
-		readPath(writer, request, path)
+		http.ServeFile(writer, request, "./static/simulator/xrd_simulator/XRD_simulator.html")
 	})
 	server := &http.Server{
 		Addr:    ":80",
@@ -138,7 +137,11 @@ func DirList(w http.ResponseWriter, r *http.Request, f http.File) {
 }
 
 func toHTTPError(err error) int {
-	if os.IsNotExist(err) {
+	msg := err.Error()
+	if os.IsNotExist(err) ||
+		strings.Contains(msg, "not found") ||
+		strings.Contains(msg, "No such file") ||
+		strings.Contains(msg, "not exist") {
 		return http.StatusNotFound
 	}
 	if os.IsPermission(err) {
