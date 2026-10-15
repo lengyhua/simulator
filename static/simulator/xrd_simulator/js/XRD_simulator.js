@@ -400,19 +400,25 @@ $('.btn').click(function (e) {
 // ======================= END ======================== //
 // ======================= END ======================== //
 $('#btn-standby').click(function (e) {
+    // `this` is always the button itself; e.target can be the inner .pill-dot
+    // span, which carries no id — the old $("#" + e.target.id) then evaluated
+    // to $("#") and jQuery threw "Syntax error, unrecognized expression",
+    // aborting the handler before the power ramp ever started (every click
+    // that landed on the dot was silently swallowed).
+    const $btn = $(this);
     bool_first_time = false;
-    if (e.target.value == "off") {
-        e.target.value = "on";
-        $("#" + e.target.id).toggleClass("round-btn-active", true);
+    if (this.value == "off") {
+        this.value = "on";
+        $btn.toggleClass("round-btn-active", true);
     } else {
-        e.target.value = "off";
-        $("#" + e.target.id).toggleClass("round-btn-active", false);
+        this.value = "off";
+        $btn.toggleClass("round-btn-active", false);
     }
-    e.target.disabled = true;
-    $("#" + e.target.id).css("cursor", "not-allowed");
+    this.disabled = true;
+    $btn.css("cursor", "not-allowed");
     $("#stats-kv").toggleClass("div-disabled", false);
     $("#stats-ma").toggleClass("div-disabled", false);
-    $(this).toggleClass("blinker", true);
+    $btn.toggleClass("blinker", true);
     power_timer = setInterval(increasePower_fn, 400);
 });
 // ======================= END ======================== //
@@ -835,10 +841,27 @@ function eraseInvisibleY() {
 function export_StyledSVG(SVGElem) {
     $("#svg-curve").attr("width", "835");
     $("#svg-curve").attr("height", "655");
+    /* Strip the on-screen text compensation (de-distortion IIFE at the bottom
+       of this file) before cloning: the export renders at the natural 835x655
+       size where text must NOT be compensated. Restore right after serialize. */
+    var compTexts = SVGElem.querySelectorAll('text[data-comp-base]');
+    var saved = [];
+    for (var ci = 0; ci < compTexts.length; ci++) {
+        var ct = compTexts[ci];
+        saved.push([ct, ct.getAttribute('transform'), ct.getAttribute('data-comp-base')]);
+        var base = ct.getAttribute('data-comp-base');
+        if (base) { ct.setAttribute('transform', base); } else { ct.removeAttribute('transform'); }
+        ct.removeAttribute('data-comp-base');
+    }
     var oDOM = SVGElem.cloneNode(true);
     oDOM.id = "svg-copy"
     read_Element(oDOM, SVGElem);
     var data = new XMLSerializer().serializeToString(oDOM);
+    for (var ri = 0; ri < saved.length; ri++) {
+        if (saved[ri][1]) { saved[ri][0].setAttribute('transform', saved[ri][1]); }
+        else { saved[ri][0].removeAttribute('transform'); }
+        saved[ri][0].setAttribute('data-comp-base', saved[ri][2]);
+    }
     var svg = "data:image/svg+xml," + data;
 
     let img_svg = new Image();
@@ -850,3 +873,74 @@ function export_StyledSVG(SVGElem) {
     img_svg.src = svg;
 }
 // ======================= END ======================== //
+
+// ======================= CURVE TEXT DE-DISTORTION ======================== //
+// #svg-curve stretches its 835x655 viewBox into the wide .curve-box with
+// preserveAspectRatio="none" (aspect-ratio + max-height keeps the box wide and
+// flat). Every <text> inside is therefore non-uniformly scaled — tick labels
+// render ~2x wider than tall. This compensates each text with an inverse
+// scale in its own local coordinate system so glyphs keep their natural
+// shape. Re-runs automatically whenever the axis SVG is re-injected
+// (MutationObserver) and on viewport resize (rAF-debounced).
+// The two axis titles are HTML overlays (.curve-axis-title) and are skipped.
+// NOTE: export_StyledSVG strips this compensation before cloning — the export
+// renders at the natural 835x655 size where text must NOT be compensated.
+(function () {
+    var VB_W = 835, VB_H = 655;
+    var svg = document.getElementById('svg-curve');
+    if (!svg || typeof MutationObserver === 'undefined') return;
+
+    function f4(v) { return (Math.round(v * 10000) / 10000); }
+
+    function compensate() {
+        var box = svg.getBoundingClientRect();
+        if (!box.width || !box.height) return;
+        var sx = box.width / VB_W, sy = box.height / VB_H;
+        if (sx <= 0 || sy <= 0) return;
+        var texts = svg.querySelectorAll('text');
+        for (var i = 0; i < texts.length; i++) {
+            var t = texts[i];
+            if (t.classList.contains('axis-title')) continue; // titles are HTML overlays now
+            var orig = t.getAttribute('data-comp-base');
+            if (orig === null) { // first touch: remember the pristine transform
+                orig = t.getAttribute('transform') || '';
+                t.setAttribute('data-comp-base', orig);
+            }
+            if (orig.indexOf('rotate') >= 0) {
+                // rotated text: rotation swaps the local axes, so the inverse
+                // factors swap too (scale x by 1/sy, y by 1/sx)
+                t.setAttribute('transform', orig + ' scale(' + f4(1 / sy) + ',' + f4(1 / sx) + ')');
+            } else {
+                // unrotated: pivot the inverse scale on the text anchor so the
+                // position never moves (x/y/dy live in the same local space)
+                var x = parseFloat(t.getAttribute('x'));
+                var y = parseFloat(t.getAttribute('y'));
+                if (isNaN(x)) x = 0;
+                if (isNaN(y)) y = 0;
+                var dyAttr = t.getAttribute('dy') || '';
+                var dy = 0;
+                if (dyAttr) {
+                    var m = parseFloat(dyAttr);
+                    if (!isNaN(m)) {
+                        var fs = parseFloat(getComputedStyle(t).fontSize);
+                        dy = m * (isNaN(fs) ? 13.5 : fs);
+                    }
+                }
+                var px = x, py = y + dy;
+                t.setAttribute('transform',
+                    (orig ? orig + ' ' : '') +
+                    'translate(' + f4(px) + ',' + f4(py) + ') scale(' + f4(1 / sx) + ',' + f4(1 / sy) + ')' +
+                    ' translate(' + f4(-px) + ',' + f4(-py) + ')');
+            }
+        }
+    }
+
+    new MutationObserver(compensate).observe(svg, { childList: true, subtree: true });
+    var pending = false;
+    window.addEventListener('resize', function () {
+        if (pending) return;
+        pending = true;
+        requestAnimationFrame(function () { pending = false; compensate(); });
+    });
+    compensate();
+})();

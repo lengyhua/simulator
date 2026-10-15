@@ -36,7 +36,12 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/static/", fileHandler)
 	mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		http.Redirect(writer, request, "/static/simulator/xrd_simulator/XRD_simulator.html", http.StatusMovedPermanently)
+		// 根路径serve主页；其余未匹配路径返回404
+		if request.URL.Path == "/" || request.URL.Path == "/index.html" {
+			readPath(writer, request, "static/home/index.html")
+			return
+		}
+		http.NotFound(writer, request)
 	})
 	server := &http.Server{
 		Addr:    ":80",
@@ -82,6 +87,13 @@ func readPath(w http.ResponseWriter, r *http.Request, path string) {
 			w.Header().Set("Accept-Ranges", "bytes")
 		}
 	}
+
+	// 资源全部内嵌在二进制里，本地读取零成本；禁用浏览器缓存是为了保证
+	// 重新构建后刷新页面一定能拿到最新 CSS/JS（否则旧的 .css 会被缓存，
+	// 界面改动看不到）。
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
 
 	w.Header().Set("Content-Length", strconv.Itoa(len(bytes)))
 	w.Write(bytes)

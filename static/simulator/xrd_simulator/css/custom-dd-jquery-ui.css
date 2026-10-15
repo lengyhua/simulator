@@ -1,7 +1,7 @@
 /*!
  * Custom jQuery dropdown style — dark theme
  * Forked  by Andres Vasquez for AMMRF'S https://www.myscope.training
- * Modernized for XRD 模拟与仿真平台
+ * Modernized for XRD模拟仿真辅助分析平台
  */
 
 /* Layout helpers */
@@ -49,12 +49,11 @@
 .ui-menu .ui-menu-item-wrapper {
 	position: relative;
 	padding: 8px 14px;
-	font-family: 'Inter', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
-	font-size: 13.5px;
+	font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+	font-size: 14px;
 	color: #E9EBF2;
-	font-weight: 500;
+	font-weight: 600;
 	letter-spacing: 0.01em;
-	-webkit-font-smoothing: antialiased;
 	transition: background .12s;
 }
 
@@ -68,9 +67,9 @@
 	font-weight: 600;
 }
 
+/* 禁用菜单项：实色暗化在 XRD_simulator.css（.ui-menu .ui-state-disabled .ui-menu-item-wrapper，
+   需要 !important 压过该文件的深色主题基类） */
 .ui-menu .ui-state-disabled .ui-menu-item-wrapper {
-	color: #9BA3C2;
-	opacity: 0.4;
 	cursor: not-allowed;
 }
 
@@ -81,10 +80,12 @@
 
 /* The dropdown button (selectmenu widget) */
 .ui-button {
-	padding: 8px 32px 8px 12px;
+	padding: 0 12px;
 	display: inline-block;
 	position: relative;
 	line-height: normal;
+	height: 36px;
+	box-sizing: border-box;
 	margin-right: 0;
 	cursor: pointer;
 	vertical-align: middle;
@@ -102,23 +103,21 @@
 	border: 1px solid rgba(139,147,168,0.28);
 	border-radius: 6px;
 	color: #E6E8F0;
-	font-family: 'Inter', system-ui, sans-serif;
+	font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
 	font-size: 13px;
 	font-weight: 500;
 	width: 100%;
 	transition: border-color .15s, box-shadow .15s;
 }
 
-.ui-button:hover,
-.ui-button:focus {
+.ui-button:hover:not(.ui-state-disabled),
+.ui-button:focus:not(.ui-state-disabled) {
 	border-color: #5B8DEF;
 	box-shadow: 0 0 0 2px rgba(91,141,239,0.2);
 }
 
-.ui-button.ui-state-disabled {
-	opacity: 0.45;
-	cursor: not-allowed;
-}
+/* disabled 态的实色暗化在 XRD_simulator.css（.ui-button.ui-state-disabled，
+   需要 !important 才能压过该文件里的深色主题 !important 基类） */
 
 .ui-button,
 .ui-button:link,
@@ -154,12 +153,11 @@
 	margin-top: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	font-family: 'Inter', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
-	font-size: 13.5px;
+	font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+	font-size: 14px;
 	font-weight: 600;
 	letter-spacing: 0.01em;
 	color: #E9EBF2;
-	-webkit-font-smoothing: antialiased;
 }
 
 fieldset .ui-selectmenu-button.ui-button {
@@ -169,10 +167,14 @@ fieldset .ui-selectmenu-button.ui-button {
 	box-sizing: border-box;
 }
 
+/* 下拉箭头：绝对定位垂直居中（按钮高 36px，不再依赖 float 的基线对齐） */
 .ui-selectmenu-icon.ui-icon {
-	float: right;
+	position: absolute;
+	top: 50%;
+	right: 10px;
+	transform: translateY(-50%);
+	float: none;
 	margin-top: 0;
-	right: 8px;
 	left: auto;
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239BA3C2' d='M6 8L2 4h8L6 8z'/%3E%3C/svg%3E");
 }
@@ -196,10 +198,4 @@ fieldset .ui-selectmenu-button.ui-button {
 	border-radius: 8px;
 	overflow: hidden;
 	box-shadow: 0 4px 16px rgba(0,0,0,0.35);
-}
-
-/* states */
-span.ui-state-disabled {
-	opacity: .45;
-	cursor: not-allowed !important;
 }

@@ -1,7 +1,7 @@
 /*
 Created  by Andres Vasquez for AMMRF'S https://www.myscope.training
 This work is licensed under a Creative Commons Attribution 4.0 International License.
-Modernized: XRD 模拟与仿真平台 — dark instrument UI
+Modernized: XRD模拟仿真辅助分析平台 — dark instrument UI
 */
 
 /* ─── Token System ─────────────────────────────────────────────── */
@@ -10,20 +10,25 @@ Modernized: XRD 模拟与仿真平台 — dark instrument UI
   --surface:   #2A2D3E;
   --surface-2: #232636;
   --border:    #454B6B;
-  --border-soft: rgba(139,147,168,0.22);
+  --border-soft: rgba(139,147,168,0.32);
   --accent:    #5B8DEF;
   --accent-glow: rgba(91,141,239,0.25);
   --text:       #E6E8F0;
-  --text-dim:   #9BA3C2;
+  /* 次级文字比原先（#9BA3C2）提亮一档：11–12px 小字在深色底上，偏暗的灰蓝
+     读起来就是"发虚/不清晰"。--text-disabled/--text-faint 供禁用态实色使用。 */
+  --text-dim:   #AEB6CC;
+  --text-disabled: #959CB0;  /* 禁用按钮文字 */
+  --text-faint:     #7E8598;  /* 禁用标签/图标/读数 */
   --ok:         #4ADE80;
   --warn:       #FBBF24;
   --danger:     #F87171;
   --radius:     8px;
   --radius-lg:  12px;
   /* CJK faces are listed explicitly so Chinese labels do not fall back to an
-     arbitrary system font — Inter only ships latin/latin-ext/greek here. */
-  --font-sans:  'Inter', 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', system-ui, -apple-system, sans-serif;
-  --font-mono:  'JetBrains Mono', 'Cascadia Mono', Consolas, 'Courier New', monospace;
+     arbitrary system font. 全线改用 Windows 原生系统字体（Segoe UI + 微软雅黑）：
+     通用无需下载，小字号深色背景下笔画厚实均匀，消除 Inter 细笔画的锯齿感。 */
+  --font-sans:  'Segoe UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+  --font-mono:  'Consolas', 'JetBrains Mono', 'Cascadia Mono', 'Courier New', monospace;
 }
 
 html {
@@ -36,10 +41,11 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
-  /* crisper text on dark backgrounds */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+  /* 关键：不要设 -webkit-font-smoothing: antialiased / text-rendering: optimizeLegibility。
+     在 Windows Chrome 上这两者会关闭 ClearType 次像素抗锯齿（并把字形降为灰度 AA），
+     11–13px 浅色小字在深色底上会明显发虚、笔画变细。保持默认 auto 才有 ClearType
+     的三倍水平采样，文字才"实"。 */
+  -webkit-font-smoothing: auto;
 }
 
 html, body {
@@ -53,6 +59,7 @@ html, body {
   display: flex;
   flex-direction: column;
   user-select: none;
+  position: relative; /* positioning context for #top-instructions */
 }
 
 .platform-title-row {
@@ -82,6 +89,19 @@ html, body {
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--text);
+  /* 标题即返回主页链接：无下划线默认态，悬停/聚焦给出明确反馈 */
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color .15s ease;
+}
+
+.platform-name:hover,
+.platform-name:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  outline: none;
 }
 
 .tab-bar {
@@ -94,7 +114,7 @@ html, body {
 .tab {
   padding: 9px 20px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-dim);
   background: transparent;
   border: none;
@@ -123,7 +143,7 @@ html, body {
 }
 
 .tab:disabled {
-  opacity: 0.35;
+  color: var(--text-faint);
   cursor: not-allowed;
 }
 
@@ -163,9 +183,9 @@ body {
 
 #top-instructions {
   position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
+  /* 右上角：完全位于 header 内部，不遮挡下方卡片内容 */
+  top: 16px;
+  right: 24px;
   background: rgba(30,32,40,0.9);
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -189,7 +209,7 @@ body {
 }
 
 #top-instructions-txt {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-dim);
   text-align: center;
   line-height: 1.3;
@@ -219,9 +239,9 @@ body {
 
 /* Section labels */
 .section-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--text-dim);
   text-transform: uppercase;
   margin-bottom: 8px;
@@ -233,7 +253,7 @@ body {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
   padding: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.045), 0 1px 3px rgba(0,0,0,0.22);
 }
 
 .row2 { display: flex; gap: 10px; }
@@ -266,7 +286,7 @@ select:focus {
 }
 
 select:disabled {
-  opacity: 0.4;
+  color: var(--text-faint);
   cursor: not-allowed;
 }
 
@@ -276,9 +296,11 @@ button, .btn {
   border: 1px solid var(--border);
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 500;
-  padding: 8px 14px;
+  /* 13px + 600：Segoe UI 没有 500 字重，font-weight:500 会按 CSS 匹配规则回落到
+     400 Regular，深色底上笔画过细显得发虚；600 命中 Semibold，笔画扎实清晰。 */
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 14px;
   border-radius: 6px;
   cursor: pointer;
   transition: border-color .15s, background .15s, box-shadow .15s;
@@ -288,16 +310,20 @@ button, .btn {
   text-align: center;
 }
 
-button:hover, .btn:hover {
+/* 控件按钮统一 36px 高（与 selectmenu 下拉按钮等高，舒适的点选目标） */
+.btn { min-height: 36px; }
+
+button:hover:not(:disabled), .btn:hover:not(:disabled) {
   border-color: var(--accent);
   background: var(--surface-2);
 }
 
-button:disabled, .btn:disabled {
-  opacity: 0.35;
+/* 禁用态：实色暗化（禁用时半透明混合会让文字边缘发虚） */
+button:disabled, .btn:disabled, .btn-disabled {
   cursor: not-allowed;
-  border-color: var(--border);
+  border-color: var(--border-soft);
   background: var(--surface-2);
+  color: var(--text-disabled);
 }
 
 .btn-primary {
@@ -312,10 +338,11 @@ button:disabled, .btn:disabled {
   border-color: #4A7DEE;
 }
 
+/* 锁定的主按钮：保留蓝色家族暗示"这是主操作"，但实色低对比、不发糊 */
 .btn-primary:disabled {
-  background: var(--border);
-  border-color: var(--border);
-  color: var(--text-dim);
+  background: rgba(91,141,239,0.16);
+  border-color: rgba(91,141,239,0.38);
+  color: #9DB4E8;
   opacity: 1;
 }
 
@@ -333,14 +360,15 @@ button:disabled, .btn:disabled {
 }
 
 .readout .label {
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-dim);
 }
 
 .readout .value {
   font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text);
 }
 
@@ -355,7 +383,7 @@ button:disabled, .btn:disabled {
 .angle { display:flex; flex-direction:column; gap:2px; flex:0 0 auto; width:56px; height:38px; }
 .btn-stats { width:100%; height:calc(50% - 1px); padding:0; border:1px solid var(--border); background:var(--surface-2); color:var(--text-dim); border-radius:4px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
 .btn-stats:hover:not(:disabled) { color:var(--text); border-color:var(--accent); }
-.btn-stats:disabled { opacity:.45; cursor:not-allowed; }
+.btn-stats:disabled { color:var(--text-faint); border-color:var(--border-soft); background:var(--surface-2); cursor:not-allowed; }
 
 /* Status pill */
 .status-pill {
@@ -396,9 +424,11 @@ button:disabled, .btn:disabled {
   border: 1px solid var(--border-soft) !important;
   color: var(--text) !important;
   font-family: var(--font-sans) !important;
-  font-size: 13.5px !important;
+  font-size: 14px !important;
   font-weight: 600 !important;
-  padding: 9px 12px !important;
+  padding: 0 12px !important;
+  height: 36px !important;
+  box-sizing: border-box;
   border-radius: 6px !important;
   cursor: pointer;
   width: 100%;
@@ -406,7 +436,7 @@ button:disabled, .btn:disabled {
   transition: border-color .15s, box-shadow .15s;
 }
 
-.ui-button:hover {
+.ui-button:hover:not(.ui-state-disabled) {
   border-color: var(--accent) !important;
 }
 
@@ -419,13 +449,14 @@ button:disabled, .btn:disabled {
 
 .ui-selectmenu-text {
   font-family: var(--font-sans) !important;
-  font-size: 13.5px !important;
+  font-size: 14px !important;
   font-weight: 600 !important;
   color: var(--text) !important;
   letter-spacing: 0.01em;
   margin-right: 28px !important;
   margin-top: 0 !important;
-  line-height: 1.4;
+  /* 36px 按钮 - 2px 边框：行高撑满内容盒，文字垂直居中 */
+  line-height: 34px;
 }
 
 [id$="-menu"] {
@@ -443,12 +474,23 @@ button:disabled, .btn:disabled {
 .ui-menu-item-wrapper {
   color: var(--text) !important;
   font-family: var(--font-sans) !important;
-  font-size: 13.5px !important;
+  font-size: 14px !important;
   padding: 8px 14px !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
 }
 
 .ui-menu-item-wrapper:hover {
+  background: var(--accent-soft, rgba(91,141,239,0.12)) !important;
+}
+
+/* 禁用菜单项（class 挂在 li 上）：实色暗化，!important 压过上面的文字色基类 */
+.ui-menu .ui-state-disabled .ui-menu-item-wrapper {
+  color: var(--text-faint) !important;
+  cursor: not-allowed;
+}
+
+/* 禁用项不响应悬停高亮（li.ui-state-disabled 的祖先判定） */
+.ui-menu li:not(.ui-state-disabled) .ui-menu-item-wrapper:hover {
   background: var(--accent-soft, rgba(91,141,239,0.12)) !important;
 }
 
@@ -457,33 +499,61 @@ button:disabled, .btn:disabled {
   color: #fff !important;
 }
 
-.ui-state-disabled {
-  opacity: 0.35 !important;
+/* 禁用的 selectmenu：实色暗化（!important 压过上面的深色主题基类） */
+.ui-button.ui-state-disabled,
+.ui-button.ui-state-disabled .ui-selectmenu-text {
+  color: var(--text-disabled) !important;
+}
+
+.ui-button.ui-state-disabled {
+  background: var(--surface-2) !important;
+  border-color: var(--border-soft) !important;
+  cursor: not-allowed;
 }
 
 /* ─── Layout helpers (existing structure) ─────────────────────── */
+/* 第一行：双列网格。
+   行1 = "样品"/"舱门"两个标签（同高同行）；行2 = 样品下拉 + 开门按钮（同高 36px）。
+   "舱门"列宽 auto，自动取标签与按钮的较大值，标签因此与按钮等宽并居中。 */
 #first-row {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  row-gap: 10px;
   align-items: stretch;
 }
 
-/* these containers already provide flex gap — avoid double spacing */
-#first-row .section-label,
-#third-row .section-label {
+#first-row .section-label {
+  grid-column: 1;
+  grid-row: 1;
   margin-bottom: 0;
 }
 
-#first-row fieldset {
-  flex: 1;
+#first-row > fieldset {
+  grid-column: 1;
+  grid-row: 2;
   border: none;
   margin: 0;
   padding: 0;
+  min-width: 0;
 }
 
 #doors-div {
-  flex: 0 0 auto;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 标签下间距 = 网格行距 10px：开门按钮顶边与下拉按钮顶边精确对齐 */
+#doors-div .btn-title {
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+/* this container already provides flex gap — avoid double spacing */
+#third-row .section-label {
+  margin-bottom: 0;
 }
 
 #second-row {
@@ -520,9 +590,9 @@ button:disabled, .btn:disabled {
 /* the upstream standby hit area is just the 8px dot + 7px padding (~22px);
    give it a proper pill so it is easy to click with a mouse */
 .standby-wrap #btn-standby {
-  padding: 8px 22px;
+  padding: 9px 22px;
   min-width: 78px;
-  min-height: 34px;
+  min-height: 36px;
   justify-content: center;
 }
 
@@ -571,13 +641,31 @@ button:disabled, .btn:disabled {
 .field-group label,
 .btn-with-title label {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--text-dim);
   text-transform: uppercase;
   margin-bottom: 6px;
   user-select: none;
+}
+
+/* 禁用标签：实色暗化（替代 opacity，小字号字形保持清晰；
+   特异性需高于 .field-group label 才能覆盖其 color） */
+.field-group label.label-disabled,
+.btn-with-title label.label-disabled {
+  color: var(--text-faint);
+}
+
+/* 预计时间行：标签与数值横向排列，无需标签下间距 */
+#scantime-div .btn-title { margin-bottom: 0; }
+
+#scantime-val {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin: 0;
 }
 
 /* Readout rows for stats */
@@ -614,7 +702,7 @@ button:disabled, .btn:disabled {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.045), 0 2px 8px rgba(0,0,0,0.25);
 }
 
 /* inner positioning context: centres a fixed-aspect box holding the diagram.
@@ -664,7 +752,7 @@ button:disabled, .btn:disabled {
 }
 
 .diagram-range {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-dim);
   font-family: var(--font-mono);
   line-height: 1;
@@ -674,9 +762,9 @@ button:disabled, .btn:disabled {
   position: absolute;
   top: 10px;
   left: 14px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--text-dim);
   text-transform: uppercase;
   z-index: 1;
@@ -701,7 +789,7 @@ button:disabled, .btn:disabled {
   border: 1px solid var(--border);
   color: var(--text-dim);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   padding: 5px 14px;
   border-radius: 20px;
@@ -859,9 +947,9 @@ button:disabled, .btn:disabled {
 #canvas-curve { position:absolute; left:8.4431%; top:3.8931%; width:88.6228%; height:87.0229%; pointer-events:none; }
 
 .diffractogram-card .card-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--text-dim);
   text-transform: uppercase;
   margin-bottom: 10px;
@@ -872,24 +960,62 @@ button:disabled, .btn:disabled {
    they must be lightened or the axes/ticks become invisible. Prose labels read
    better in the UI sans face than in the monospace one. */
 #svg-curve text {
-  fill: #D5DAE7;
+  fill: #E2E6F0;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
 
-/* domain/axis lines + tick marks */
-#svg-curve .domain,
+/* Axis titles as HTML overlays. #svg-curve non-uniformly stretches its
+   835x655 viewBox into the wide .curve-box (preserveAspectRatio="none"),
+   which distorts any <text> inside it — the titles used to render squashed.
+   Rendering them as HTML keeps natural glyph shapes; positions use the same
+   plot-area percentage math as #canvas-curve, so they track any box size. */
+.curve-axis-title {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #9DBAF5;
+  white-space: nowrap;
+}
+
+/* X title: centred under the plot (plot centre x = 52.75%), below the axis
+   line (90.92% of box height) and its tick labels */
+.curve-axis-title--x {
+  left: 52.75%;
+  bottom: 1.5%;
+  transform: translateX(-50%);
+}
+
+/* Y title: rotated, centred on the plot's vertical span (47.4%), left of the
+   y axis and tick labels */
+.curve-axis-title--y {
+  left: 2.4%;
+  top: 47.4%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
+/* domain/axis lines + tick marks.
+   #svg-curve stretches its 835x655 viewBox into a ~1006x295 box
+   (preserveAspectRatio="none"), so user-unit stroke widths render ~2.7x wider
+   on the vertical axis than on the horizontal one — the Y axis looked twice as
+   thick as the X axis. non-scaling-stroke pins both to the same screen width. */
 #svg-curve .tick line {
-  stroke: #9BA3C2;
-  stroke-width: 1.5;
+  stroke: #9AA2BE;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
 }
 
 /* the two axis lines themselves read slightly brighter than the ticks */
 #svg-curve .domain {
-  stroke: #C0C6D8;
-  stroke-width: 1.8;
+  stroke: #8E96B0;
+  stroke-width: 1.2px;
+  vector-effect: non-scaling-stroke;
 }
 
 #svg-curve #degree-l text,
@@ -904,9 +1030,11 @@ button:disabled, .btn:disabled {
   opacity: 1;
 }
 
+/* y-axis tick marks: match the x-axis ticks (this rule wins on specificity,
+   so it has to repeat the colour or the y ticks render dimmer than the x ones) */
 #svg-curve g.y-visible line {
-  stroke: var(--border);
-  opacity: 0.5;
+  stroke: #9AA2BE;
+  opacity: 0.9;
 }
 
 /* ─── Modal ────────────────────────────────────────────────────── */
@@ -943,7 +1071,7 @@ button:disabled, .btn:disabled {
 }
 
 .modal-title p {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text);
 }
@@ -1014,11 +1142,6 @@ button:disabled, .btn:disabled {
   transition: filter 260ms cubic-bezier(.15, -0.03, .49, 1.14) 10ms;
 }
 
-[class$="-disabled"] {
-  opacity: .45;
-  cursor: not-allowed;
-}
-
 /* ─── Focus visible ───────────────────────────────────────────── */
 button:focus-visible,
 select:focus-visible,
@@ -1045,7 +1168,7 @@ select:focus-visible,
   border: 1px solid var(--border);
   color: var(--text-dim);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   padding: 6px 16px;
@@ -1060,7 +1183,22 @@ select:focus-visible,
   border-radius: 50%;
   background: var(--text-dim);
   flex-shrink: 0;
+  /* decorative only — let clicks fall through to the button. With hit testing
+     on, e.target becomes the span (no id) and the click handler's
+     $("#" + e.target.id) turns into $("#") which jQuery rejects with a
+     Syntax error, killing the standby action for clicks on the dot. */
+  pointer-events: none;
 }
+
+/* 禁用态实色暗化。注意源顺序：必须放在 round-btn-active / green-halo
+   之前（特异性相同，后者靠源顺序胜出），保证电源爬升闪烁期间 LED 仍是绿色 */
+#btn-standby[disabled] {
+  cursor: not-allowed;
+  border-color: var(--border-soft);
+  color: var(--text-faint);
+}
+
+#btn-standby[disabled] .pill-dot { background: var(--text-faint); }
 
 #btn-standby.round-btn-active {
   border-color: rgba(74,222,128,0.4);
@@ -1070,11 +1208,6 @@ select:focus-visible,
 #btn-standby.round-btn-active .pill-dot {
   background: var(--ok);
   box-shadow: 0 0 8px rgba(74,222,128,0.6);
-}
-
-#btn-standby[disabled] {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 /* blinker animation for standby button while powering up */
@@ -1124,7 +1257,7 @@ button.btn-active {
   border: 1px solid var(--border);
   color: var(--text-dim);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   padding: 4px 14px;
@@ -1152,16 +1285,15 @@ button.btn-active {
   box-shadow: 0 0 6px rgba(248,113,113,0.5);
 }
 
-/* disabled state for generic buttons */
+/* disabled state for generic buttons (颜色/背景由 button:disabled 规则提供) */
 .btn-disabled,
 button[disabled] {
-  opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* stats readouts — .div-disabled dims them */
-.div-disabled {
-  opacity: 0.45;
-  filter: grayscale(0.3);
-}
+/* stats readouts — .div-disabled dims them（实色暗化，不用 opacity） */
+.div-disabled { opacity: 1; filter: none; }
+.div-disabled .label { color: var(--text-faint); }
+.div-disabled.readout .value { color: var(--text-disabled); }
+#scantime-div.div-disabled #scantime-val { color: var(--text-disabled); }
 
