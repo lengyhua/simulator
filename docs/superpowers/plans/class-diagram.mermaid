@@ -1,0 +1,201 @@
+classDiagram
+    direction LR
+
+    class Atom {
+        +string element
+        +string wyckoff
+        +number x
+        +number y
+        +number z
+        +number occupancy
+        +number multiplicity
+    }
+
+    class Crystal {
+        +string name
+        +string system
+        +number sgNumber
+        +string sgSymbol
+        +string sgKey
+        +number a
+        +number b
+        +number c
+        +number alpha
+        +number beta
+        +number gamma
+        +Atom[] atoms
+    }
+
+    class HKLReflection {
+        +number h
+        +number k
+        +number l
+        +number d
+        +number twoTheta
+        +number multiplicity
+        +number fRe
+        +number fIm
+        +number intensity
+        +number intensityNorm
+    }
+
+    class XRDPattern {
+        +number[] twoTheta
+        +number[] intensity
+        +HKLReflection[] reflections
+        +PatternMeta meta
+    }
+
+    class PatternMeta {
+        +number lambda
+        +number q
+        +number step
+        +number min
+        +number max
+    }
+
+    class XrdParams {
+        +number lambda
+        +number q
+        +number thermalB
+        +boolean useLp
+        +boolean useThermal
+        +boolean usePeakShape
+        +number rangeMin
+        +number rangeMax
+        +number step
+    }
+
+    class WyckoffSite {
+        +string letter
+        +number mult
+        +string symm
+        +string[] ops
+    }
+
+    class SpaceGroupData {
+        +string[] centers
+        +WyckoffSite[] sites
+    }
+
+    class CrystalParser {
+        <<service>>
+        +parseCord(text: string) Crystal
+        +serializeCord(c: Crystal) string
+    }
+
+    class WyckoffTable {
+        <<service>>
+        +getSite(sgKey: string, letter: string) WyckoffSite
+        +expandPositions(sgKey: string, letter: string, x: number, y: number, z: number) Vec3[]
+        +multiplicityOf(sgKey: string, letter: string) number
+        +laueOperations(sgKey: string) number[][]
+    }
+
+    class ScatteringFactor {
+        <<service>>
+        +f0(element: string, s: number) number
+        +hasElement(element: string) boolean
+    }
+
+    class StructureFactor {
+        <<service>>
+        +compute(crystal: Crystal, h: number, k: number, l: number, opts: SFOptions) Complex
+    }
+
+    class LorentzPolarization {
+        <<service>>
+        +lp(twoThetaDeg: number) number
+    }
+
+    class IntensityCalculator {
+        <<service>>
+        +peakIntensity(twoThetaDeg: number, f: Complex, opts: object) number
+        +normalizeReflections(rs: HKLReflection[]) HKLReflection[]
+    }
+
+    class GaussianBroadener {
+        <<service>>
+        +broaden(reflections: HKLReflection[], opts: object) object
+    }
+
+    class XRDPipeline {
+        <<service>>
+        +computeXRDPattern(crystal: Crystal, params: XrdParams) XRDPattern
+    }
+
+    class XrdFileIO {
+        <<service>>
+        +serializeXrd(crystal: Crystal, pattern: XRDPattern) string
+        +parseXrd(text: string) object
+    }
+
+    class CrystalStore {
+        <<Zustand store>>
+        +Crystal crystal
+        +XrdParams params
+        +XRDPattern pattern
+        +string error
+        +loadCordText(text: string) void
+        +setCrystal(c: Crystal) void
+        +updateAtom(index: number, patch: Partial~Atom~) void
+        +setParams(patch: Partial~XrdParams~) void
+        +compute() void
+        +reset() void
+    }
+
+    class CalcXrdPage {
+        <<React page>>
+        +render() JSX
+    }
+
+    class XRDChart {
+        <<React component>>
+        +render() JSX
+    }
+
+    class HKLTable {
+        <<React component>>
+        +render() JSX
+    }
+
+    class CrystalInput {
+        <<React component>>
+        +render() JSX
+    }
+
+    class SettingsPanel {
+        <<React component>>
+        +render() JSX
+    }
+
+    Crystal "1" *-- "1..*" Atom
+    XRDPattern "1" *-- "0..*" HKLReflection
+    XRDPattern *-- PatternMeta
+    SpaceGroupData "1" *-- "1..*" WyckoffSite
+
+    CrystalParser ..> Crystal : creates
+    XRDPipeline --> CrystalParser : uses
+    XRDPipeline --> StructureFactor : uses
+    XRDPipeline --> GaussianBroadener : uses
+    XRDPipeline --> IntensityCalculator : uses
+    XRDPipeline ..> XRDPattern : produces
+    StructureFactor --> WyckoffTable : expandPositions
+    StructureFactor --> ScatteringFactor : f0
+    StructureFactor --> LorentzPolarization : lp
+    XrdFileIO ..> XRDPattern : reads/writes
+
+    CrystalStore --> XRDPipeline : compute
+    CrystalStore o-- Crystal
+    CrystalStore o-- XrdParams
+    CrystalStore o-- XRDPattern
+
+    CalcXrdPage --> CrystalStore : subscribes
+    CalcXrdPage *-- CrystalInput
+    CalcXrdPage *-- SettingsPanel
+    CalcXrdPage *-- XRDChart
+    CalcXrdPage *-- HKLTable
+    CrystalInput --> CrystalStore : dispatch
+    SettingsPanel --> CrystalStore : dispatch
+    XRDChart --> CrystalStore : reads pattern
+    HKLTable --> CrystalStore : reads reflections

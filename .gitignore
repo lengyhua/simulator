@@ -1,0 +1,21 @@
+# Node / build artifacts
+node_modules/
+web/node_modules/
+web/dist/
+web/.tmp/
+.tmp/
+
+# Python (one-time generator scripts)
+__pycache__/
+*.pyc
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local agent session state (per CLAUDE.md: do not commit or modify casually)
+.remember/
+.claude/ralph-loop.local.md
+.workbuddy/

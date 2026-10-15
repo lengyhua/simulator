@@ -1,0 +1,550 @@
+/*
+ * Module body styles (plan §2: 模块主体样式：参数区网格、曲线卡片、表格、按钮).
+ * New-written for the CalcXRD module, reusing the tokens.css variables.
+ * Control primitives (.btn / select / .field-group / .readout / .section-label)
+ * are adapted from the upstream instrument stylesheet so the module page stays
+ * visually consistent with the platform shell.
+ */
+
+/* ─── Route fallback (lazy chunk loading) ───────────────────────── */
+.route-fallback {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+/* ─── Module layout ─────────────────────────────────────────────── */
+.module-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 24px 24px;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.module-panel-row {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.module-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (max-width: 1080px) {
+  .module-panel-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.module-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  min-width: 0;
+}
+
+.module-panel > .section-label:first-child {
+  margin-top: 0;
+}
+
+/* ─── Section labels / cards (upstream-derived) ─────────────────── */
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.field-group {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.045), 0 1px 3px rgba(0,0,0,0.22);
+}
+
+.field-group + .field-group {
+  margin-top: 10px;
+}
+
+.field-group label,
+.btn-with-title label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.row2 { display: flex; gap: 10px; }
+.row2 > * { flex: 1; }
+
+/* ─── Form controls (upstream-derived, dark tokens) ─────────────── */
+select {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239BA3C2' d='M6 8L2 4h8L6 8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+}
+
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+select:disabled {
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+input[type="text"],
+input[type="number"] {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+button, .btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+  -webkit-appearance: none;
+  outline: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.btn { min-height: 36px; }
+
+button:hover:not(:disabled), .btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+button:disabled, .btn:disabled, .btn-disabled {
+  cursor: not-allowed;
+  border-color: var(--border-soft);
+  background: var(--surface-2);
+  color: var(--text-disabled);
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #4A7DEE;
+  border-color: #4A7DEE;
+}
+
+/* ─── Readouts ──────────────────────────────────────────────────── */
+.readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  padding: 8px 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+.readout .label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.readout .value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.readout.accent .value {
+  color: var(--accent);
+}
+
+/* ─── Tables ────────────────────────────────────────────────────── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.data-table th,
+.data-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.data-table th {
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+.data-table th:first-child,
+.data-table td:first-child {
+  text-align: left;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(91,141,239,0.08);
+}
+
+.data-table td.mono {
+  font-family: var(--font-mono);
+}
+
+/* ─── Misc ──────────────────────────────────────────────────────── */
+.text-dim { color: var(--text-dim); }
+.text-faint { color: var(--text-faint); }
+.mono { font-family: var(--font-mono); }
+
+.error-banner {
+  border: 1px solid rgba(248,113,113,0.45);
+  background: rgba(248,113,113,0.12);
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+/* ─── T09 crystal input: sample picker ─────────────────────────── */
+.sample-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.file-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+}
+
+.file-input::file-selector-button {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.file-input::file-selector-button:hover {
+  border-color: var(--accent);
+}
+
+.sample-status {
+  font-size: 12px;
+  margin: 0;
+}
+
+.sample-read-error {
+  margin: 0;
+}
+
+/* ─── T09 crystal input: header form grid ──────────────────────── */
+.crystal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.crystal-grid label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.crystal-grid-full {
+  grid-column: 1 / -1;
+}
+
+.sg-key-readout {
+  font-size: 12px;
+  margin: 0;
+}
+
+.crystal-edit-hint {
+  font-size: 12px;
+  margin: 10px 0 0;
+}
+
+/* ─── T09 atom table ───────────────────────────────────────────── */
+.atom-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.atom-table-head .section-label {
+  margin-bottom: 0;
+}
+
+.atom-table-scroll {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.atom-table th,
+.atom-table td {
+  text-align: left;
+  vertical-align: middle;
+}
+
+.atom-table th:first-child,
+.atom-table td:first-child {
+  text-align: right;
+}
+
+.cell-input {
+  width: 100%;
+  min-width: 56px;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.cell-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.cell-input-narrow {
+  min-width: 44px;
+  max-width: 64px;
+}
+
+.btn-danger-cell {
+  padding: 5px 10px;
+  font-size: 12px;
+  min-height: 28px;
+  color: var(--danger);
+  border-color: rgba(248,113,113,0.4);
+}
+
+.btn-danger-cell:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: rgba(248,113,113,0.12);
+}
+
+/* ─── Module action bar (compute / export live here, T09–T11) ──── */
+.module-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.module-action-bar .action-spacer {
+  flex: 1;
+}
+
+/* ─── T10 settings panel ───────────────────────────────────────── */
+.checkbox-group-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.checkbox-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.checkbox-label {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 400 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  color: var(--text);
+  margin-bottom: 0 !important;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.checkbox-disabled {
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.checkbox-disabled input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
+.thermal-hint {
+  font-size: 12px;
+  margin: 10px 0 0;
+  max-width: 520px;
+  line-height: 1.5;
+}
+
+.settings-hint {
+  font-size: 12px;
+  margin: 10px 0 0;
+}
+
+/* ─── T11 result curve ─────────────────────────────────────────── */
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.chart-head .section-label {
+  margin-bottom: 0;
+}
+
+.chart-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chart-meta {
+  font-size: 12px;
+}
+
+.chart-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 380px;
+  border: 1px dashed var(--border-soft);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.chart-placeholder p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.table-placeholder {
+  min-height: 160px;
+}
+
+/* ─── Sortable table headers (T12) ─────────────────────────────── */
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.sortable-th:hover {
+  color: var(--text);
+}
+
+.sortable-th:focus-visible {
+  outline: 2px solid var(--accent-glow);
+  outline-offset: -2px;
+}

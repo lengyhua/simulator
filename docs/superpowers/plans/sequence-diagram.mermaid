@@ -1,0 +1,85 @@
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant CP as CalcXrdPage
+    participant ST as CrystalStore
+    participant PR as CrystalParser
+    participant PL as XRDPipeline
+    participant SF as StructureFactor
+    participant WT as WyckoffTable
+    participant CF as ScatteringFactor
+    participant LP as LorentzPolarization
+    participant GB as GaussianBroadener
+    participant V as XRDChart / HKLTable
+
+    %% ── 1. 输入：上传/选择 .cord ─────────────────────────────
+    U->>CP: 上传 Al.cord（或选预置样品）
+    CP->>ST: loadCordText(text)
+    ST->>PR: parseCord(text)
+    PR->>PR: 逐行字段校验 + 科学计数解析 + sgKey 组装
+    alt 解析失败
+        PR-->>ST: throw CordParseError(行号)
+        ST-->>CP: error = 可读信息（界面提示，不崩溃）
+    else 解析成功
+        PR-->>ST: Crystal
+        ST-->>CP: crystal（表单回显）
+    end
+
+    %% ── 2. 触发计算 ─────────────────────────────────────────
+    U->>CP: 点击「计算粉末 XRD」
+    CP->>ST: compute()
+    ST->>PL: computeXRDPattern(crystal, params)
+
+    %% ── 3. hkl 枚举与逐峰计算 ───────────────────────────────
+    loop 每个 hkl（h≥k≥l≥0，2θ ≤ rangeMax）
+        PL->>PL: d = dSpacing(cell, h,k,l)（一般三斜公式）
+        PL->>PL: 2θ = 2·arcsin(λ/2d)（λ/2d>1 则跳过）
+        PL->>SF: F = compute(crystal, h,k,l, opts)
+        SF->>WT: expandPositions(sgKey, letter, x,y,z)
+        WT-->>SF: 全部等效位置（centers × ops，去重）
+        loop 每个等效原子
+            SF->>CF: f0(element, s=sinθ/λ)
+            CF-->>SF: f₀（角度相关，Cronie 表）
+            SF->>SF: f = f₀ · occupancy · exp(−B·s²)
+            SF->>SF: F += f · exp(2πi(hx+ky+lz))
+        end
+        Note over SF: |F|≈0 ⇒ 系统消光自然涌现，无需查消光表
+        SF-->>PL: F_hkl（复数）
+        PL->>LP: lp(2θ)（useLp 开关）
+        LP-->>PL: Lp
+        PL->>PL: I = K·Lp·|F|²（K=1）；mult = Laue 操作去重计数
+    end
+
+    %% ── 4. 归并、归一化、展宽 ───────────────────────────────
+    PL->>PL: 等效 hkl 归并 + 归一化（最强峰 = 100）
+    PL->>GB: broaden(reflections, {min,max,step,q})
+    Note over GB: usePeakShape=false 时直接输出 δ 棒谱
+    GB-->>PL: { twoTheta[], intensity[] }
+    PL-->>ST: XRDPattern
+    ST-->>CP: pattern（订阅更新）
+    CP->>V: 渲染曲线 + hkl 表格
+    V-->>U: 2θ–强度图谱 + 峰表
+
+    %% ── 5. 导出 ─────────────────────────────────────────────
+    opt 导出 .xrd
+        U->>V: 点击「导出 .xrd」
+        V->>V: serializeXrd(crystal, pattern) → Blob 下载
+    end
+
+    %% ── 6. 参数变更（局部重算路径） ─────────────────────────
+    U->>CP: 修改 λ / q / 复选框 / 扫描范围
+    CP->>ST: setParams(patch)
+    ST->>PL: computeXRDPattern(crystal, params)（同上管线）
+    PL-->>ST: XRDPattern
+    ST-->>V: 曲线/表格刷新
+
+    %% ── 7. UI 导航事件流（DEV standalone 演示动线） ──────────
+    rect rgb(238, 242, 250)
+        Note over U,CP: DEV 首页 → 模块 → 回首页（PROD 时根路由即模块页，标题为整页 <a href="/">）
+        U->>CP: 访问 /calc-xrd/（DEV）
+        CP-->>U: HomePage（复刻首页三卡片）
+        U->>CP: 点卡片二「XRD理论数据仿真」
+        CP-->>U: Link 到 /module → CalcXrdPage（platform-header + 单 active tab）
+        U->>CP: 点标题「XRD模拟仿真辅助分析平台」
+        CP-->>U: DEV: SPA Link 回 /calc-xrd/（PROD: 整页导航到 /）
+    end

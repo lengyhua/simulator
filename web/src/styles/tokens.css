@@ -1,0 +1,33 @@
+/*
+ * Design tokens — verbatim from XRD_simulator.css lines 7–32
+ * (simulator/static/simulator/xrd_simulator/css/XRD_simulator.css, Token System).
+ * Kept byte-identical in values so the module page is pixel-consistent with the
+ * instrument page of the platform. Do not edit values here without a matching
+ * change in the upstream stylesheet.
+ */
+
+:root {
+  --bg:        #1E2028;
+  --surface:   #2A2D3E;
+  --surface-2: #232636;
+  --border:    #454B6B;
+  --border-soft: rgba(139,147,168,0.32);
+  --accent:    #5B8DEF;
+  --accent-glow: rgba(91,141,239,0.25);
+  --text:       #E6E8F0;
+  /* 次级文字比原先（#9BA3C2）提亮一档：11–12px 小字在深色底上，偏暗的灰蓝
+     读起来就是"发虚/不清晰"。--text-disabled/--text-faint 供禁用态实色使用。 */
+  --text-dim:   #AEB6CC;
+  --text-disabled: #959CB0;  /* 禁用按钮文字 */
+  --text-faint:     #7E8598;  /* 禁用标签/图标/读数 */
+  --ok:         #4ADE80;
+  --warn:       #FBBF24;
+  --danger:     #F87171;
+  --radius:     8px;
+  --radius-lg:  12px;
+  /* CJK faces are listed explicitly so Chinese labels do not fall back to an
+     arbitrary system font. 全线改用 Windows 原生系统字体（Segoe UI + 微软雅黑）：
+     通用无需下载，小字号深色背景下笔画厚实均匀，消除 Inter 细笔画的锯齿感。 */
+  --font-sans:  'Segoe UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+  --font-mono:  'Consolas', 'JetBrains Mono', 'Cascadia Mono', 'Courier New', monospace;
+}

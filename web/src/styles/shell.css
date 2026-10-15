@@ -1,0 +1,190 @@
+/*
+ * Platform shell — 摘译自 XRD_simulator.css 第 1–217 行
+ * (simulator/static/simulator/xrd_simulator/css/XRD_simulator.css, Token System
+ *  + Platform Shell + Instrument Container + Top bar 段)。
+ *
+ * 保留: :root 令牌(在 tokens.css)、html/body 基础、.platform-header /
+ *        .platform-title-row / .logo / .platform-name / .tab-bar / .tab /
+ *        .tab.active / .tab:disabled、#top-bar(display:none 保留)。
+ * 舍弃: #simulator-base、#top-instructions 等仪器专有段。
+ *
+ * 相对原 CSS 的必要修正(计划 §1.3):
+ *  1. 原 `html { user-select: none }` 波及输入框 → 追加输入框 user-select 修正;
+ *  2. 原 `html, body { overflow: hidden }` 为仪器页整页不滚动 → 模块主体内容高,
+ *     改为 header 固定、#module-main 区域 overflow:auto(用 :has(#module-main)
+ *     限定在模块页生效, 首页 home.css 的文档滚动不受影响);
+ *  3. 原 `body { display:flex; flex-direction:column }` 保留(仅模块页需要)。
+ */
+
+/* ─── Base (verbatim from upstream) ─────────────────────────────── */
+html {
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  /* 关键：不要设 -webkit-font-smoothing: antialiased / text-rendering: optimizeLegibility。
+     在 Windows Chrome 上这两者会关闭 ClearType 次像素抗锯齿（并把字形降为灰度 AA），
+     11–13px 浅色小字在深色底上会明显发虚、笔画变细。保持默认 auto 才有 ClearType
+     的三倍水平采样，文字才"实"。 */
+  -webkit-font-smoothing: auto;
+}
+
+html, body {
+  height: 100%;
+}
+
+/* ─── Platform Shell (verbatim from upstream) ───────────────────── */
+.platform-header {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  position: relative; /* positioning context for instruction pills */
+}
+
+.platform-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px 10px;
+}
+
+.logo {
+  width: 30px;
+  height: 30px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.platform-name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  /* 标题即返回主页链接：无下划线默认态，悬停/聚焦给出明确反馈 */
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color .15s ease;
+}
+
+.platform-name:hover,
+.platform-name:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  outline: none;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.tab {
+  padding: 9px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: color .15s;
+  font-family: var(--font-sans);
+  text-decoration: none;
+}
+
+.tab:hover { color: var(--text); }
+
+.tab.active {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.tab:disabled {
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+/* ─── Instrument Container (with module-page corrections) ───────── */
+/* 原仪器页: html, body { overflow: hidden } + body flex column 全局生效。
+   模块页同样整页不滚动, 但滚动发生在 #module-main 内部; 首页(无 #module-main)
+   保持文档流滚动, 由 home.css 接管。 */
+html:has(#module-main),
+body:has(#module-main) {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body:has(#module-main) {
+  display: flex;
+  flex-direction: column;
+}
+
+body:has(#module-main) .platform-header {
+  flex: 0 0 auto;
+}
+
+/* ─── Top bar (kept for structural fidelity) ────────────────────── */
+#top-bar {
+  display: none; /* replaced by platform shell */
+}
+
+/* ─── 修正 1: 输入类控件恢复文本选择(原 html{user-select:none} 不适用于表单) ── */
+input,
+textarea,
+select,
+[contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* ─── 修正 2: 模块主区域 —— header 固定, 内容区自行滚动 ─────────── */
+#module-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  background: var(--surface);
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* ─── Focus visible (模块页表单控件) ────────────────────────────── */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
