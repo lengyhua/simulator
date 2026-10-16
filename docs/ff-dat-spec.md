@@ -1,3 +1,9 @@
+> ⚠️ **DEPRECATED（2026-10-16 文档整合）**：本文内容已拆分至权威新文档 ——
+> 二进制结构 → [`params-dispersion.md`](params-dispersion.md) §1/§2/§3；
+> Kα1/Kα2 取证（§7.5）→ [`params-dispersion.md`](params-dispersion.md) §5；
+> 数据管理方案（§4 原 `ion-and-cr-fe-data-research`）→ [`data-provenance.md`](data-provenance.md)。
+> 保留此文件仅为 git 可追溯，**新内容以 `DATA-REFERENCE.md` 及其主题文档为准**。
+
 # FF.dat 色散修正表（F′ / F″）二进制结构 Spec
 
 > 作者：架构师 高见远（software-architect）  

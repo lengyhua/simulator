@@ -42,6 +42,8 @@ Outputs
   docs/itc-c-table6113-extraction.md — provenance + validation
 """
 
+import argparse
+import csv
 import io
 import json
 import math
@@ -52,6 +54,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "references" / "gemmi-it92.hpp"
 OUT = ROOT / "docs" / "itc-c-table6113.json"
+CSV_OUT = ROOT / "docs" / "data" / "itc-c-table6113.csv"
 
 # s-grid exactly as printed in ITC Vol C Table 6.1.1.3
 S_GRID = (
@@ -162,7 +165,37 @@ def parse_gemmi(text: str):
     return neutral, ion_map
 
 
+def build_csv(species_out):
+    """Emit the committed CSV layout: one row per species,
+    symbol,gemmi_symbol,charge,electron_count, then s_0.00..s_2.00.
+    Values use str(round(v,4)) — 4 decimals, trailing zeros dropped
+    (matches docs/data/itc-c-table6113.csv byte-for-byte; line endings
+    are \\n, matching the committed file)."""
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\n")
+    header = ["symbol", "gemmi_symbol", "charge", "electron_count"]
+    header += [f"s_{s:.2f}" for s in S_GRID]
+    w.writerow(header)
+    for r in species_out:
+        row = [r["symbol"], r["gemmi_symbol"], r["charge"],
+               r["electron_count"]]
+        row += [str(round(r["s_values"][f"{s:.2f}"], 4)) for s in S_GRID]
+        w.writerow(row)
+    return buf.getvalue()
+
+
 def main():
+    ap = argparse.ArgumentParser(
+        description="Build ITC Vol C Table 6.1.1.3 from Gemmi it92.hpp")
+    ap.add_argument("--csv", action="store_true",
+                    help=f"also export {CSV_OUT.relative_to(ROOT)}")
+    ap.add_argument("--csv-out", type=Path, default=CSV_OUT,
+                    help="CSV output path (default: docs/data/itc-c-table6113.csv)")
+    args = ap.parse_args()
+    run(csv_out=args.csv_out if args.csv else None)
+
+
+def run(csv_out: "Path | None" = None):
     text = io.open(SRC, encoding="utf-8").read()
     neutral, ion_map = parse_gemmi(text)
 
@@ -324,6 +357,11 @@ def main():
     with io.open(OUT, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
     print(f"Wrote {OUT}  ({len(species_out)} species)")
+
+    if csv_out is not None:
+        csv_out.parent.mkdir(parents=True, exist_ok=True)
+        csv_out.write_text(build_csv(species_out), encoding="utf-8")
+        print(f"Wrote {csv_out}  ({len(species_out)} rows)")
 
     # Monotonicity self-check
     viol = 0

@@ -1,3 +1,6 @@
+> ⚠️ **DEPRECATED（2026-10-16 文档整合）**：内容已并入权威 [`formulas.md`](formulas.md)。
+> 保留此文件仅为 git 可追溯，新公式以 `formulas.md` 为准。
+
 # ITC-C 公式解析（Chapter 6.1）
 
 > 本文件收录 ITC Vol C（Prince, ed., 4th ed., 2006）第 6.1 章与 CalcXRD

@@ -126,16 +126,22 @@ Na1+ 9.9997, Cl1- 17.9944, Fe 25.9946.
 
 ### `FF.dat` — F′ and F″ dispersion correction data
 
-Binary. Each record is **192 bytes fixed**:
+Binary. **9568 bytes = 92 records × 104 bytes**, no file header. Each record:
 
 ```
-Byte 0:    name length (N)
-Bytes 1..N: element/ionsymbol ASCII
-Rest:      F′ and F″ coefficients (float32 arrays, layout not fully decoded)
+Offset 0      : Delphi ShortString length byte L
+Offset 1..L   : ASCII element symbol, zero-padded to 8 bytes
+Offset 8..103 : 12 little-endian IEEE-754 doubles, INTERLEAVED
+                (f′, f″) × 6 radiation columns:
+                CuKα1, CuKα2, MoKα1, MoKα2, CoKα1, CoKα2
+                record n (0-based) = element with Z = n + 1, ordered H..U
 ```
 
 ⚠️ `FF.dat` is the **F′/F″ anomalous-dispersion** table, NOT f₀ (f₀ lives in
-`Factor.dat`). Its decoder is a separate work item.
+`Factor.dat`). Layout fully decoded 2026-10-16 (`docs/params-dispersion.md` §1,
+evidence in `docs/audits/ff-dat-validation.md`). Known defects: Z=91 name is
+mislabelled `Po` (must index by Z, not symbol); Ce (Z=58) Cu Kα1 f′ = −1.087
+is a confirmed data-entry defect (kept faithful).
 
 ### `help` — embedded RTF help document
 

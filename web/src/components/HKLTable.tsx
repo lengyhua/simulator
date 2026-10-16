@@ -4,11 +4,16 @@ import type { HKLReflection } from '@/lib/xrd/types';
 import { useCrystalStore } from '@/store/crystal-store';
 
 /** Sortable columns of the hkl table. */
-type SortKey = 'hkl' | 'd' | 'twoTheta' | 'intensityNorm' | 'multiplicity';
+type SortKey = 'hkl' | 'd' | 'twoTheta' | 'intensity' | 'intensityNorm1000' | 'multiplicity';
 
 /** Formats hkl as `(h k l)` for display and sorting key. */
 function hklLabel(reflection: HKLReflection): string {
   return `(${reflection.h} ${reflection.k} ${reflection.l})`;
+}
+
+/** Legacy List-table relative intensity: strongest peak = 1000 (see header doc). */
+function intensityIo(reflection: HKLReflection): number {
+  return (reflection.intensityNorm / 100) * 1000;
 }
 
 /** Sort comparator: hkl sorts by the tuple, numerics by value. */
@@ -20,8 +25,10 @@ function compare(a: HKLReflection, b: HKLReflection, key: SortKey): number {
       return a.d - b.d;
     case 'twoTheta':
       return a.twoTheta - b.twoTheta;
-    case 'intensityNorm':
-      return a.intensityNorm - b.intensityNorm;
+    case 'intensity':
+      return a.intensity - b.intensity;
+    case 'intensityNorm1000':
+      return intensityIo(a) - intensityIo(b);
     case 'multiplicity':
       return a.multiplicity - b.multiplicity;
     default:
@@ -30,10 +37,19 @@ function compare(a: HKLReflection, b: HKLReflection, key: SortKey): number {
 }
 
 /**
- * Discrete hkl table (plan §5-T12): d / 2θ / normalized intensity /
- * multiplicity per reflection, with click-to-sort headers.
+ * Discrete hkl table (plan §5-T12): 2θ / d / I / I·Io⁻¹ / multiplicity /
+ * hkl per reflection, click-to-sort, matching the legacy program's "List"
+ * table column layout (verified against the original CalcXRD.exe List
+ * output `2θ d Intensity I/Io hkl`, 2026-10-16):
  *
- * Number formats are fixed by the plan: d to 4 decimals, 2θ and I to 2.
+ * - `I`     — raw reflection intensity I_hkl (K·Lp·|F|²·mult, K=1),
+ *             same value the legacy program writes to the `.xrd` file's
+ *             peak grid points (ref: `ref-temp/Al.xrd`).
+ * - `I/Io`  — relative intensity with the strongest peak normalized to
+ *             **1000** (the legacy List table's convention, e.g. Al:
+ *             1000/470/266/283/80/37), as opposed to `intensityNorm`'s
+ *             max-100 convention kept for the plot/curve layers.
+ *
  * Empty and error states get explicit placeholders (the page-level error
  * banner carries the detail); the curve stays authoritative for the
  * continuous profile. The optional row↔curve highlight of the plan is not
@@ -111,20 +127,22 @@ export function HKLTable() {
           <table className="data-table">
             <thead>
               <tr>
-                {header('hkl', 'hkl', '按 hkl 排序')}
-                {header('d', 'd (Å)', '按晶面间距排序')}
                 {header('twoTheta', '2θ (°)', '按衍射角排序')}
-                {header('intensityNorm', 'I (归一化)', '按归一化强度排序')}
+                {header('d', 'd (Å)', '按晶面间距排序')}
+                {header('hkl', 'hkl', '按 hkl 排序')}
+                {header('intensity', 'I', '按原始强度排序')}
+                {header('intensityNorm1000', 'I/Io', '按相对强度（满刻度 1000）排序')}
                 {header('multiplicity', 'mult', '按多重性排序')}
               </tr>
             </thead>
             <tbody>
               {rows.map((reflection) => (
                 <tr key={`${reflection.h}-${reflection.k}-${reflection.l}`}>
-                  <td className="mono">{hklLabel(reflection)}</td>
-                  <td className="mono">{reflection.d.toFixed(4)}</td>
                   <td className="mono">{reflection.twoTheta.toFixed(2)}</td>
-                  <td className="mono">{reflection.intensityNorm.toFixed(2)}</td>
+                  <td className="mono">{reflection.d.toFixed(4)}</td>
+                  <td className="mono">{hklLabel(reflection)}</td>
+                  <td className="mono">{Math.round(reflection.intensity)}</td>
+                  <td className="mono">{Math.round(intensityIo(reflection))}</td>
                   <td className="mono">{reflection.multiplicity}</td>
                 </tr>
               ))}

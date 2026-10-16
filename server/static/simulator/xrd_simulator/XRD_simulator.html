@@ -1,0 +1,227 @@
+<!doctype html>
+<!--
+Created  by Andres Vasquez for AMMRF'S https://www.myscope.training
+  —— https://www.andresvasquez.net ——
+copyright:This work is licensed under a Creative Commons Attribution 4.0 International License.
+-->
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>XRD模拟仿真辅助分析平台</title>
+    <link rel="stylesheet" href="css/fonts.css">
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/XRD_simulator.css">
+    <link rel="stylesheet" href="css/custom-dd-jquery-ui.css">
+    <script src="js/jquery-3.2.1.min.js"></script>
+    <script src="js/jquery-ui.min.js"></script>
+</head>
+
+<body>
+    <!-- ── Platform Shell ── -->
+    <div id="top-bar" style="display:none"></div>
+    <header class="platform-header">
+        <div class="platform-title-row">
+            <div class="logo">X</div>
+            <!-- 标题即返回主页的链接（悬停有反馈），点击回到平台主页 -->
+            <a class="platform-name" href="/" title="返回主页">XRD模拟仿真辅助分析平台</a>
+        </div>
+        <!-- 模块页只展示当前模块的 tab；后续模块上线时各自页面只保留自己的 tab -->
+        <nav class="tab-bar">
+            <button class="tab active">XRD仪器模拟测试</button>
+        </nav>
+        <!-- instruction pill lives in the header (its positioning context) so it
+             floats above the instrument without covering the card labels -->
+        <div id="top-instructions" class="top-instructions-on">
+            <p id="top-instructions-txt">请从下拉菜单中选择样品</p>
+        </div>
+    </header>
+
+    <!-- ── Instrument UI ── -->
+    <div id="simulator-base" class="flex modal-is-open">
+        <div id="controls-left">
+            <div class="field-group" id="first-row">
+                <!-- 网格结构：行1 = "样品"/"舱门"标签（同行同高）；行2 = 下拉 + 开门按钮（同行同高）。
+                     #doors-div 纵跨两行，标签与按钮保持语义归属 -->
+                <p class="section-label">样品</p>
+                <div id="doors-div" class="btn-with-title">
+                    <label id="doors-label" class="btn-title label-disabled">舱门</label>
+                    <button type="button" id="btn-doors" class="btn btn-disabled" value="off" disabled>开门</button>
+                </div>
+                <fieldset>
+                    <select id="specimen" autocomplete="off">
+                        <option selected="selected" disabled></option>
+                        <option value="0">3D 打印 ABS</option>
+                        <option value="1">316 钢粉末</option>
+                        <option value="2">铝</option>
+                        <option value="3">电弧喷涂铜</option>
+                        <option value="4">氮化硼</option>
+                        <option value="5">碳纤维</option>
+                        <option value="6">玻璃</option>
+                        <option value="7">玻璃碳</option>
+                        <option value="8">HOPG</option>
+                        <option value="9">Ni WC 粉末</option>
+                        <option value="10">纸</option>
+                        <option value="11">聚乙烯</option>
+                        <option value="12">聚丙烯</option>
+                        <option value="13">聚苯乙烯</option>
+                        <option value="14">NaCl</option>
+                        <option value="15">砂</option>
+                        <option value="16">硅粉</option>
+                        <option value="17">糖</option>
+                        <option value="18">TiC 粉末</option>
+                        <option value="19">TiO 粉末</option>
+                    </select>
+                </fieldset>
+            </div>
+
+            <div class="row2" id="second-row">
+                <div class="field-group">
+                    <div class="btn-with-title standby-wrap">
+                        <label id="standby-label" class="btn-title label-disabled">待机/开机</label>
+                        <button type="button" id="btn-standby" value="off" disabled>
+                            <span class="pill-dot"></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <div id="power-div" class="btn-with-title power-wrap">
+                        <label id="power-label" class="btn-title label-disabled">全功率</label>
+                        <button type="button" id="btn-power" class="btn btn-disabled" value="off" disabled>关</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row2">
+                <div class="field-group">
+                    <p class="section-label">kV</p>
+                    <div id="stats-kv" class="readout div-disabled">
+                        <span class="label">kV</span>
+                        <span class="value" id="kv-val">10</span>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <p class="section-label">mA</p>
+                    <div id="stats-ma" class="readout div-disabled">
+                        <span class="label">mA</span>
+                        <span class="value" id="ma-val">10</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-group" id="third-row">
+                <p class="section-label">扫描设置</p>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <div id="start-div" class="readout accent div-disabled" style="flex:1;">
+                        <span class="label">起始 2θ</span>
+                        <span class="value" id="start-txt">5°</span>
+                        <div id="stats-start" class="angle">
+                            <button type="button" id="btn-start-up" class="btn-stats btn-stats-up btn-disabled" disabled title="增大起始角"><svg viewBox="0 0 12 12" width="14" height="14" aria-hidden="true"><path d="M2.5 8 6 4l3.5 4z" fill="currentColor"/></svg></button>
+                            <button type="button" id="btn-start-dw" class="btn-stats btn-stats-dw btn-disabled" disabled title="减小起始角"><svg viewBox="0 0 12 12" width="14" height="14" aria-hidden="true"><path d="M2.5 4 6 8l3.5-4z" fill="currentColor"/></svg></button>
+                        </div>
+                    </div>
+                    <div id="end-div" class="readout accent div-disabled" style="flex:1;">
+                        <span class="label">终止 2θ</span>
+                        <span class="value" id="end-txt">80°</span>
+                        <div id="stats-end" class="angle">
+                            <button type="button" id="btn-end-up" class="btn-stats btn-stats-up btn-disabled" disabled title="增大终止角"><svg viewBox="0 0 12 12" width="14" height="14" aria-hidden="true"><path d="M2.5 8 6 4l3.5 4z" fill="currentColor"/></svg></button>
+                            <button type="button" id="btn-end-dw" class="btn-stats btn-stats-dw btn-disabled" disabled title="减小终止角"><svg viewBox="0 0 12 12" width="14" height="14" aria-hidden="true"><path d="M2.5 4 6 8l3.5-4z" fill="currentColor"/></svg></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="step-options" style="margin-bottom:10px;">
+                    <div style="display:flex; gap:10px;">
+                        <fieldset style="flex:1; border:none; margin:0; padding:0;">
+                            <label id="step-label" class="label-disabled">步长</label>
+                            <select id="step" autocomplete="off" class="label-disabled">
+                                <option value="empty" selected="selected" disabled>请选择</option>
+                                <option value="1">0.005°</option>
+                                <option value="9">0.01°</option>
+                                <option value="15">0.02°</option>
+                            </select>
+                        </fieldset>
+                        <fieldset id="time-step-fieldset" style="flex:1; border:none; margin:0; padding:0;">
+                            <label id="time-step-label" class="label-disabled">扫描速率</label>
+                            <select id="time-step" autocomplete="off" class="label-disabled">
+                                <option value="empty" selected="selected" disabled>请选择</option>
+                                <option value="0">0.2 °/s</option>
+                                <option value="1">0.08 °/s</option>
+                                <option value="2">0.04 °/s</option>
+                            </select>
+                        </fieldset>
+                    </div>
+                </div>
+
+                <div id="scantime-div" class="btn-with-title div-disabled" style="display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:8px 12px;">
+                    <label id="scantime-label" class="btn-title label-disabled">预计时间</label>
+                    <div id="scantime-value" style="all:unset;">
+                        <p id="scantime-val" class="stat-title">—</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="bottom-row" class="flex-evenly">
+                <button type="button" id="btn-start-scan" class="btn btn-primary btn-disabled" value="off" disabled>开始扫描</button>
+                <button type="button" id="btn-save-dff" class="btn btn-disabled" value="off" disabled>保存衍射图</button>
+            </div>
+
+            <div id="fil-current" class="channel-slider"></div>
+        </div>
+
+        <!-- Right instrument view -->
+        <div id="canvas-div">
+            <div class="diagram-card">
+                <div class="diagram-inner">
+                    <div class="diagram-box">
+                        <svg id="svg-diagram" viewBox="0 0 2640 2080"></svg>
+                        <span class="card-label">X 射线光路</span>
+                        <div class="diagram-overlay">
+                            <span id="range-2theta" class="diagram-range">2θ 范围：5° – 80°</span>
+                            <div id="controls-right">
+                                <div id="shutter-div" class="btn-with-title">
+                                    <div type="button" id="btn-shutter" value="off" disabled>关闭</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="diffractogram-card">
+                <span class="card-label">衍射图谱</span>
+                <div class="curve-stage">
+                    <div class="curve-box">
+                        <svg id="svg-curve" viewBox="-20 -15 835 655" preserveAspectRatio="none"></svg>
+                        <canvas id="canvas-curve"></canvas>
+                        <!-- 坐标轴标题用 HTML 浮层：SVG 被非均匀拉伸（preserveAspectRatio="none"），
+                             里面的 <text> 会变形；浮层按绘图区百分比定位，与 #canvas-curve 同一套算法 -->
+                        <div class="curve-axis-title curve-axis-title--x">Angle (degrees 2&theta;)</div>
+                        <div class="curve-axis-title curve-axis-title--y">Intensity (counts)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading modal -->
+    <div id="loading-modal" class="flex any-modal">
+        <div class="modal-window">
+            <div class="modal-title flex-between">
+                <p>正在加载资源…</p>
+                <span id="close-loading-modal" class="close-modal totally-hidden">×</span>
+            </div>
+            <div class="flex modal-content">
+                <div class="loading-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/anime.min.js"></script>
+    <script src="js/XRD_instruction_steps.js"></script>
+    <script src="js/XRD_steps.js"></script>
+    <script src="js/simulator_snippets.js"></script>
+    <script src="js/XRD_data.js"></script>
+    <script src="js/XRD_simulator.js"></script>
+</body>
+</html>

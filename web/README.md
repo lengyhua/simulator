@@ -52,10 +52,16 @@ tests/fixtures/Al.xrd    # 原程序参考谱（T07/T12 验收基准，9701 数�
   `s = sinθ/λ`；Wyckoff 位置展开后消光自然涌现。
 - 强度 `I = K·Lp·|F|²·mult`，K=1，`Lp = (1+cos²2θ)/(sin²θ·cosθ)`（标准式），
   mult 为 Laue 群等价面数（含 Friedel 对去重）。
-- 高斯展宽 `I(2θ) = Σ I_hkl·exp(−4ln2·(2θ−2θ₀)²/q²)`，默认 q=0.25°。
-- 默认参数：λ=1.54056（Cu Kα）、Thermal 开 B=0.9、Lp 开、PeakShape 开、
-  3–100°/0.01°。B=0.9 为对原程序参考谱的标定值（B=0 时高角峰系统性偏高
-  至 +45%，法证分析见 `src/lib/xrd/lorentz.ts` docstring）。
+- 高斯展宽 `I(2θ) = Σ I_hkl·exp(−(2θ−2θ₀)²/2q²)`（峰顶归一，无 `1/(q√2π)`
+  密度因子——help RTF 公式(6) 文字含该因子但原程序实现不采用，实证见
+  `ref-temp/Al.xrd`：原程序保存文件峰值 152557 = I_hkl 本身，非
+  I_hkl/(q√2π)≈608614；与 GUI 曲线实测口径一致，`docs/params-geometry-peak.md`
+  §5），默认 q=0.10°（q=σ；早期 q=0.25° 误读为 FWHM，已废弃，见
+  `src/lib/xrd/constants.ts:44` 注释）。
+- 默认参数：λ=1.54056（Cu Kα）、Thermal 开 B=1、Lp 开、PeakShape 开、
+  3–100°/0.01°。`DEFAULT_ATOM_THERMAL_B=1`（`constants.ts:53`）；旧 B=0.9 为
+  缺 F′F′ 时被 B 吸收的标定产物，色散 ON 后最优 ≈1.0–1.03
+  （`docs/audits/physics-audit.md` §5.6）。
 - 与原程序的已知偏差均以测试注释/汇报归档：NaCl (020)/(220)=1.52（原程序
   3.25 的 mult 口径与之数学不兼容）；Mo Kα 111 峰位 17.52°（计划早期笔误
   17.2° 已更正）。

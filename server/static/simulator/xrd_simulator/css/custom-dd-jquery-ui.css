@@ -1,0 +1,201 @@
+/*!
+ * Custom jQuery dropdown style — dark theme
+ * Forked  by Andres Vasquez for AMMRF'S https://www.myscope.training
+ * Modernized for XRD模拟仿真辅助分析平台
+ */
+
+/* Layout helpers */
+.ui-front {
+	z-index: 100;
+}
+
+/* Icons */
+.ui-icon {
+	display: inline-block;
+	vertical-align: middle;
+	margin-top: -.25em;
+	position: relative;
+	text-indent: -99999px;
+	overflow: hidden;
+	background-repeat: no-repeat;
+	width: 12px;
+	height: 12px;
+}
+
+.ui-icon-triangle-1-s {
+	background-position: center;
+}
+
+/* Misc visuals */
+.ui-menu {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: block;
+	outline: 0;
+	background: #2A2D3E;
+	border: 1px solid rgba(139,147,168,0.28);
+	border-radius: 8px;
+	box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+	overflow: hidden;
+}
+
+.ui-menu .ui-menu-item {
+	margin: 0;
+	cursor: pointer;
+	list-style-image: url("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+}
+
+.ui-menu .ui-menu-item-wrapper {
+	position: relative;
+	padding: 8px 14px;
+	font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+	font-size: 14px;
+	color: #E9EBF2;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	transition: background .12s;
+}
+
+.ui-menu .ui-menu-item-wrapper:hover {
+	background: rgba(91,141,239,0.15);
+}
+
+.ui-menu .ui-state-active .ui-menu-item-wrapper {
+	background: #5B8DEF;
+	color: #fff;
+	font-weight: 600;
+}
+
+/* 禁用菜单项：实色暗化在 XRD_simulator.css（.ui-menu .ui-state-disabled .ui-menu-item-wrapper，
+   需要 !important 压过该文件的深色主题基类） */
+.ui-menu .ui-state-disabled .ui-menu-item-wrapper {
+	cursor: not-allowed;
+}
+
+.ui-menu .ui-state-focus,
+.ui-menu .ui-state-active {
+	margin: -1px;
+}
+
+/* The dropdown button (selectmenu widget) */
+.ui-button {
+	padding: 0 12px;
+	display: inline-block;
+	position: relative;
+	line-height: normal;
+	height: 36px;
+	box-sizing: border-box;
+	margin-right: 0;
+	cursor: pointer;
+	vertical-align: middle;
+	text-align: left;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+
+	/* dark theme */
+	background: #2A2D3E;
+	border: 1px solid rgba(139,147,168,0.28);
+	border-radius: 6px;
+	color: #E6E8F0;
+	font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+	font-size: 13px;
+	font-weight: 500;
+	width: 100%;
+	transition: border-color .15s, box-shadow .15s;
+}
+
+.ui-button:hover:not(.ui-state-disabled),
+.ui-button:focus:not(.ui-state-disabled) {
+	border-color: #5B8DEF;
+	box-shadow: 0 0 0 2px rgba(91,141,239,0.2);
+}
+
+/* disabled 态的实色暗化在 XRD_simulator.css（.ui-button.ui-state-disabled，
+   需要 !important 才能压过该文件里的深色主题 !important 基类） */
+
+.ui-button,
+.ui-button:link,
+.ui-button:visited {
+	text-decoration: none;
+	color: #E6E8F0;
+}
+
+/* Selectmenu menu container */
+.ui-selectmenu-menu {
+	padding: 0;
+	margin: 0;
+	position: absolute;
+	top: 100%;
+	left: 0;
+	display: none;
+}
+
+.ui-selectmenu-menu .ui-menu {
+	overflow: auto;
+	overflow-x: hidden;
+	padding-bottom: 1px;
+	max-height: 200px;
+}
+
+.ui-selectmenu-open {
+	display: block;
+}
+
+.ui-selectmenu-text {
+	display: block;
+	margin-right: 20px;
+	margin-top: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+	font-size: 14px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	color: #E9EBF2;
+}
+
+fieldset .ui-selectmenu-button.ui-button {
+	text-align: left;
+	white-space: nowrap;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+/* 下拉箭头：绝对定位垂直居中（按钮高 36px，不再依赖 float 的基线对齐） */
+.ui-selectmenu-icon.ui-icon {
+	position: absolute;
+	top: 50%;
+	right: 10px;
+	transform: translateY(-50%);
+	float: none;
+	margin-top: 0;
+	left: auto;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239BA3C2' d='M6 8L2 4h8L6 8z'/%3E%3C/svg%3E");
+}
+
+.ui-button .ui-icon {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239BA3C2' d='M6 8L2 4h8L6 8z'/%3E%3C/svg%3E");
+}
+
+.ui-state-hover .ui-icon,
+.ui-state-focus .ui-icon,
+.ui-button:hover .ui-icon,
+.ui-button:focus .ui-icon {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23E6E8F0' d='M6 8L2 4h8L6 8z'/%3E%3C/svg%3E");
+}
+
+/* The menu panel (id ends with -menu) */
+[id$="-menu"] {
+	border: 1px solid rgba(139,147,168,0.28);
+	background: #2A2D3E;
+	color: #E6E8F0;
+	border-radius: 8px;
+	overflow: hidden;
+	box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+}

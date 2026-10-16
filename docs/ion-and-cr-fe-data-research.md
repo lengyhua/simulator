@@ -1,3 +1,9 @@
+> ⚠️ **DEPRECATED（2026-10-16 文档整合）**：本文内容已拆分 ——
+> 公式/多源实证（§2/§5）→ [`data-provenance.md`](data-provenance.md) §5；
+> 离子 F′/F″ + Cr/Fe 方案（§2.3/§3/§4）→ [`params-dispersion.md`](params-dispersion.md) §4；
+> ITC §6.1 提取（§4）→ [`data-provenance.md`](data-provenance.md) §4。
+> 保留此文件仅为 git 可追溯，**新内容以 `DATA-REFERENCE.md` 及其主题文档为准**。
+
 # F′/F″ 数据缺口补全：数据调研与验证
 
 > 日期：2026-10-16

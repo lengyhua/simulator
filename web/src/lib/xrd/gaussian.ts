@@ -1,17 +1,32 @@
 /**
  * Gaussian peak broadening (plan §3.2 / T07), in the legacy program's own
- * parameterization (help formula 6, GUI-verified 2026-10-16):
+ * parameterization (help formula 6, GUI-verified 2026-10-16, and
+ * re-confirmed against a freshly saved legacy `.xrd` — `ref-temp/Al.xrd`,
+ * byte-identical to `samples/Al.xrd`):
  *
- *   I(2θ) = Σ_hkl I_hkl · exp(−(2θ − 2θ_hkl)² / (2q²)) / (q·√2π)
+ *   I(2θ) = Σ_hkl I_hkl · exp(−(2θ − 2θ_hkl)² / (2q²))
  *
  * `q` is the Gaussian standard deviation σ in degrees — NOT the FWHM (the
  * earlier q = 0.25 FWHM reading is deprecated). The default q = 0.10 gives
- * FWHM = 2.355q ≈ 0.2355°, matching the Al.xrd profile point-by-point (the
- * intensity one grid step (0.01°) off a crest is crest·exp(−0.005)).
+ * FWHM = 2.355q ≈ 0.2355°, matching the legacy Al.xrd profile point-by-point
+ * (a grid point 0.01° off a crest reads crest·exp(−0.005)).
  *
- * The 1/(q·√2π) factor is part of the program's formula; it scales all peaks
- * by the same constant, so relative intensities (I/I₀) are unaffected — only
- * the absolute crest height of the exported .xrd changes.
+ * **No 1/(q·√2π) amplitude factor** — the legacy program normalizes each
+ * Gaussian so its *crest* equals the reflection intensity I_hkl; only the
+ * wings (exp(−dx²/2q²)) are added to neighbouring grid points. Evidence:
+ * the legacy GUI's own chart reads 152557 at the 38.63° crest, and a
+ * legacy-saved `.xrd` (ref-temp/Al.xrd, byte-identical to samples/Al.xrd)
+ * carries 152557 at that same grid point. With a 1/(q·√2π) density
+ * normalization the crest would read I_hkl/(q·√2π) ≈ 608614 for the same
+ * data — a factor of 3.9894 = 1/(0.10·√(2π)) too high. The help RTF's
+ * formula (6) text prints a "f(x)=exp(−(x−u)²/2q²)/(q√(2π))" style, but
+ * the shipped program's actual numerics (chart + saved file) are the
+ * crest-normalized form; we follow the program, not the RTF prose.
+ *
+ * Consequence: `I_hkl` (a discrete reflection, or the q≤0 δ stick value)
+ * and the broadened crest are numerically equal, so peak height in the
+ * .xrd / List output is I_hkl itself — no hidden per-peak rescaling.
+ * Relative intensities between peaks are therefore preserved trivially.
  *
  * With `q ≤ 0` the output is a δ stick spectrum: each reflection's intensity
  * lands on the nearest grid point (the `usePeakShape = false` mode of the
@@ -37,9 +52,6 @@ export interface BroadenedPattern {
   twoTheta: number[];
   intensity: number[];
 }
-
-/** √(2π) — the normalizing factor of the σ parameterization. */
-const SQRT_TWO_PI = Math.sqrt(2 * Math.PI);
 
 /**
  * Gaussian contributions beyond ±8σ are below e⁻³² ≈ 1.3e-14 — numerically
@@ -98,10 +110,14 @@ export function gaussianBroaden(
     const halfWidth = GAUSSIAN_WINDOW_Q * q;
     const from = Math.max(0, Math.ceil((reflection.twoTheta - halfWidth - min) / step));
     const to = Math.min(count - 1, Math.floor((reflection.twoTheta + halfWidth - min) / step));
-    const amplitude = reflection.intensity / (q * SQRT_TWO_PI);
+    // Crest-normalized form: the reflection's full intensity I_hkl lands on
+    // the crest; neighbouring grid points add I_hkl·exp(−dx²/2q²). No
+    // 1/(q·√2π) density factor (see the file-header evidence note — the
+    // legacy program's saved `.xrd` and its own chart both read I_hkl at the
+    // crest, not I_hkl/(q·√2π)).
     for (let i = from; i <= to; i += 1) {
       const dx = twoTheta[i] - reflection.twoTheta;
-      intensity[i] += amplitude * Math.exp((-dx * dx) / (2 * q * q));
+      intensity[i] += reflection.intensity * Math.exp((-dx * dx) / (2 * q * q));
     }
   }
 

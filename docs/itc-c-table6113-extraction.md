@@ -1,3 +1,6 @@
+> ⚠️ **DEPRECATED（2026-10-16 文档整合）**：内容已并入权威 [`data-provenance.md`](data-provenance.md) §4。
+> 保留此文件仅为 git 可追溯，新内容以 `data-provenance.md` 为准。
+
 # Table 6.1.1.3 提取记录与数据价值评估
 
 > 本文件记录 ITC Vol C **Table 6.1.1.3**（Mean atomic scattering factors

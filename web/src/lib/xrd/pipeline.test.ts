@@ -187,6 +187,24 @@ describe('pipeline — Al.xrd 全谱验收（T07，λ=1.54056、q=0.10 σ、3–
     }
   });
 
+  it('验收 7（绝对强度回归）：峰顶 = I_hkl（峰顶归一形式，无 1/(q√2π) 密度因子）', () => {
+    // 实证来源：原程序 2026-10-16 新存 `ref-temp/Al.xrd`（与 `samples/Al.xrd`
+    // 逐字节一致）峰值 = 152557 = 离散反射 I_hkl 本身；GUI 曲线同口径。
+    // 若回归到 help RTF 公式(6) 文字的密度归一 1/(q√2π)，峰顶会变成
+    // 152557/(0.10·√(2π)) ≈ 608614（3.9894 倍），本测试即失败。
+    const gridPeakValue = gridPeak(alPattern, 38.6272).intensity;
+    const reflection = alPattern.reflections.find((r) => r.h === 1 && r.k === 1 && r.l === 1);
+    expect(reflection, '(111) 未在反射表中找到').toBeDefined();
+    // 峰顶应等于 I_hkl（相对误差 <1%，mult 口径已知 0.24% 偏差）。
+    // toBeCloseTo 第二参是"小数位数"（绝对差 < 0.5×10^-n），大数用显式相对误差判断。
+    expect(Math.abs(gridPeakValue - reflection!.intensity) / reflection!.intensity).toBeLessThan(0.01);
+    // 且绝不应出现密度归一放大（>2x 即异常）。
+    expect(gridPeakValue / reflection!.intensity).toBeLessThan(2);
+    // 数值锚点：参考文件峰值 152557，计算值应在 ±5% 内（吸收 mult 口径差）。
+    expect(gridPeakValue).toBeGreaterThan(152557 * 0.95);
+    expect(gridPeakValue).toBeLessThan(152557 * 1.05);
+  });
+
   it('验收 6（GUI 基准）：NaCl 奇偶不敏感峰 I/I₀ 与 GUI List 偏差 ≤5%', () => {
     // GUI 实测（a=5.62、Na1+@4a / Cl1-@4b、均 B=1、四选项全开、q=0.10）：
     // 111/200/220/311/222/400/331/420/422 = 91/1000/616/19/187/78/9/196/137。

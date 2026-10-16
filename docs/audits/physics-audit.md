@@ -3,7 +3,7 @@
 > 作者：架构师 高见远（software-architect）
 > 日期：2026-10-16
 > 范围：`web/src/lib/xrd/` 全部物理公式与参数（只读审计，未修改任何代码/文档）
-> 审计方法：逐文件源码精读 + 行号级物理依据比对 + 134 项现有测试套件复核 + 与 `docs/ff-dat-spec.md` / `scripts/extract_ff_dat.py` 交叉验证
+> 审计方法：逐文件源码精读 + 行号级物理依据比对 + 134 项现有测试套件复核 + 与 `docs/params-dispersion.md`（原 ff-dat-spec） / `scripts/extract_ff_dat.py` 交叉验证
 
 ---
 
@@ -61,9 +61,9 @@
 
 | 公式 | 位置 | 判定 | 依据 |
 |---|---|---|---|
-| `I(2θ)=Σ I_hkl·exp(−(2θ−2θ_hkl)²/(2q²))/(q√2π)` | :5, :101-104 | 正确 | 与 help 公式(6) 逐字符一致；`q=σ` |
+| `I(2θ)=Σ I_hkl·exp(−(2θ−2θ_hkl)²/(2q²))`（峰顶归一，无 1/(q√2π)） | :5, 展宽循环 | 正确（2026-10-16 修订） | 早期按 help RTF 公式(6) 文字加过 `1/(q√2π)` 密度因子，经 `ref-temp/Al.xrd`（原程序新存，与 `samples/Al.xrd` 逐字节一致）复核：原程序文件峰值 152557 = I_hkl 本身（web 棒谱 152927，0.24% 口径差），若含该因子峰顶应 ≈608614；GUI 曲线实测同口径。程序实现为峰顶归一形式，help 文字系理想化表述 |
 | q = σ（非 FWHM），默认 0.10 | :44 | 正确 | FWHM=2.355σ≈0.2355°；与 Al.xrd 剖面逐点吻合（峰值 38.63° 处 152557，±0.01° ≈ 峰值·exp(−0.005)） |
-| 面积守恒 + δ 棒谱分支 | :14-18, :90-96 | 正确 | 振幅 `intensity/(q√2π)` ⇒ 单峰面积=intensity（保面积），峰高=intensity/(q√2π)（与「List=剖面峰值」一致）；`q≤0` 落最近栅格点 |
+| δ 棒谱分支 | :90-96 | 正确 | `q≤0` 时 I_hkl 落最近栅格点（与峰顶归一形式在 q→0 极限自洽：峰高=I_hkl） |
 
 ### 1.5 `constants.ts` —— 正确
 
@@ -89,7 +89,7 @@
 
 | 公式 | 位置 | 判定 | 依据 |
 |---|---|---|---|
-| Z 索引（Z=91 误标 Pa 已用 `FF_SYMBOLS` 修正） | dispersion.ts:105-109, ff_data.ts:31 | 正确 | 见 `docs/ff-dat-spec.md` §1.5 |
+| Z 索引（Z=91 误标 Pa 已用 `FF_SYMBOLS` 修正） | dispersion.ts:105-109, ff_data.ts:31 | 正确 | 见 `docs/params-dispersion.md`（原 ff-dat-spec） §1.5 |
 | 最近辐射列、**不插值** | dispersion.ts:63-75, :111 | 正确 | 三组列横跨 K 吸收边，插值无物理意义；Cu/Mo/Co Kα1 Δλ=0 精确命中 |
 | Cr Kα(2.2897)/Fe Kα(1.9360) → `supported:false`（置灰） | dispersion.ts:46, :82-87 | 正确 | `LAMBDA_TOLERANCE=0.05`：Cr Δλ≈0.50、Fe Δλ≈0.14，均 >0.05；列间距 ~0.25 Å，0.05 阈值不会误赋 |
 | 复数式 `fⱼ=f₀·e^{−Bⱼ s²}+f′+i f″` | dispersion.ts:13 | 正确 | IT Vol. C；help(5) 仅标量近似（见 §5.2） |
@@ -131,7 +131,7 @@
 - **建议**：用独立 f′f″ 表（Cromer–Mann / CVIP / XrayDB）对 Z≈55–62 区段交叉校验 `FF.dat`；若确认，修 `FF.dat` 并用 `scripts/gen_ff.py` 重新生成 `ff_data.ts`。**不必阻塞当前交付**。
 
 > **2026-10-16 更新（已确认 + 已处置）**：经内部三条一致性证据（Z-趋势断裂、Kα1/Kα2 20 eV 不自洽、兄弟 Kα2 条目 −1.818 正确）与**两条独立外部交叉校验**——(a) IUCr CIF 字典 `dispersion_imag_cu` 给出 Ce f″=9.648，与 `FF.dat` 9.67 吻合（证明虚部正确）；(b) 独立 SAD 文献引用 Cromer–Liberman 表给出 Ce 在 Cu Kα 的 **f′=−1.88、f″≈9.74**——**确认 Kα1 槽位 −1.087 为录入缺陷，正确值 ≈−1.88**。
-> **处置决策（主理人拍板）**：因项目以「逐字节复现 CalcXRD.exe」为首要目标，且缺陷影响可忽略（仅含 Ce + Cu Kα 样品，振幅扰动 ~1.4%），**保留 `ff_data.ts` 原始值 −1.087**；仅在 `gen_ff.py` 解码告警 + `ff_data.ts` 文件头注释 + 本文档 `docs/ff-dat-validation.md` 中显式标记为已知 legacy 数据缺陷，并给出修正值（−1.818 或 −1.88）供「优先物理正确性」的用户选用。**轻度项 P2 至此闭环**。
+> **处置决策（主理人拍板）**：因项目以「逐字节复现 CalcXRD.exe」为首要目标，且缺陷影响可忽略（仅含 Ce + Cu Kα 样品，振幅扰动 ~1.4%），**保留 `ff_data.ts` 原始值 −1.087**；仅在 `gen_ff.py` 解码告警 + `ff_data.ts` 文件头注释 + 本文档 本文档 中显式标记为已知 legacy 数据缺陷，并给出修正值（−1.818 或 −1.88）供「优先物理正确性」的用户选用。**轻度项 P2 至此闭环**。
 
 ### 2.2 轻微-2 [文档/过时] 两处注释与代码现状不符
 
@@ -190,10 +190,10 @@
 
 | 优先级 | 文件:行 | 改动 |
 |---|---|---|
-| P3 | `types.ts:111` | 删除「engine ignores it for now」，改为已接入 `ff_data.ts` |
-| P3 | `lorentz.ts:23` | 「IUCr Cronie f₀」→「Factor.dat f₀（含离子）+ F′F″」 |
-| P3 | `pipeline.ts:123,148` | `structureFactor` 接收已算的 `d`，消除重复 dSpacing |
-| P2 | `FF.dat` / `ff_data.ts:95` | 交叉校验 Z=55–62 区段，修正 Ce Cu Kα1 f′ 录入缺陷（如确认） |
+| P3 | `types.ts:111` | 删除「engine ignores it for now」，改为已接入 `ff_data.ts` | **已实施**（types.ts 无此注释残留） |
+| P3 | `lorentz.ts:23` | 「IUCr Cronie f₀」→「Factor.dat f₀（含离子）+ F′F″」 | **已实施**（现 lorentz.ts 头注已是 Factor.dat/FF.dat 表述） |
+| P3 | `pipeline.ts:123,148` | `structureFactor` 接收已算的 `d`，消除重复 dSpacing | **已实施**（pipeline.ts:149-154 现传入 `s = 1/(2d)` 复用，注释已说明 d 在 Laue/Friedel 下不变） |
+| P2 | `FF.dat` / `ff_data.ts:95` | 交叉校验 Z=55–62 区段，修正 Ce Cu Kα1 f′ 录入缺陷（如确认） | **已闭环（2026-10-16）**：确认 −1.087 为录入缺陷，按保真原则保留原值；`gen_ff.py:88` 告警 + `ff_data.ts:16` ⚠ 注释 + 本文档 §2.1 均显式标记并给出修正值 ≈−1.88 |
 
 ---
 

@@ -548,3 +548,108 @@ button:disabled, .btn:disabled, .btn-disabled {
   outline: 2px solid var(--accent-glow);
   outline-offset: -2px;
 }
+
+/* ── 浮窗（single XRD / Wyckoff symbol）────────────────────────────── */
+.float-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+}
+
+.float-window {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.float-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.float-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.float-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.float-close:hover {
+  color: var(--text);
+}
+
+.float-body {
+  padding: 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* single XRD */
+.single-xrd-header {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: pre;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+}
+.single-xrd-meta {
+  margin: 0;
+  font-size: 12px;
+}
+.single-xrd-table-wrap {
+  overflow-x: auto;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.single-xrd-table td,
+.single-xrd-table th {
+  white-space: nowrap;
+}
+
+/* Wyckoff */
+.wyckoff-meta {
+  margin: 0;
+  font-size: 12px;
+}
+.wyckoff-table-wrap {
+  overflow-x: auto;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.wyckoff-ops {
+  font-size: 11px;
+  white-space: normal;
+  min-width: 260px;
+}
+.float-trigger-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}

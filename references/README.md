@@ -1,3 +1,8 @@
+> ⚠️ **DEPRECATED（2026-10-16 文档整合）**：本文数据内容已拆分至权威新文档 ——
+> ITC 表清单/来源 → [`docs/data-provenance.md`](../docs/data-provenance.md)；
+> f₀ 主题 → [`docs/params-f0.md`](../docs/params-f0.md)；色散主题 → [`docs/params-dispersion.md`](../docs/params-dispersion.md)。
+> 保留此文件仅为 git 可追溯，**新内容以 [`docs/DATA-REFERENCE.md`](../docs/DATA-REFERENCE.md) 及其主题文档为准**。
+
 # Atomic Scattering Factors — 项目参考资料总览
 
 > 本文件整合 CalcXRD 项目中与**原子散射因子 f₀** 及**反常色散 F′/F″** 相关的全部权威来源、

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { LAMBDA_TABLE } from '@/lib/xrd/constants';
+import { LAMBDA_TABLE, CUSTOM_LAMBDA_PRESETS } from '@/lib/xrd/constants';
 import { hasDispersion, hasDispersionExtended } from '@/lib/xrd/dispersion';
 import type { XrdParams } from '@/lib/xrd/types';
 import { useCrystalStore } from '@/store/crystal-store';
@@ -10,10 +10,28 @@ function lambdaLabel(key: string, value: number): string {
   return `${key} Kα (${value} Å)`;
 }
 
-/** Reverse lookup: wavelength value → table key (for the select value). */
-function lambdaKeyOf(lambda: number): string {
-  const entry = Object.entries(LAMBDA_TABLE).find(([, value]) => value === lambda);
-  return entry ? entry[0] : '';
+/**
+ * Reverse lookup: wavelength value → dropdown option value. Standard targets
+ * key by symbol (`Cu`…); the custom presets key by their preset label. Returns
+ * an empty string when the value matches neither (the "自定义" fallback).
+ */
+function lambdaOptionValue(lambda: number): string {
+  const tableEntry = Object.entries(LAMBDA_TABLE).find(([, value]) => value === lambda);
+  if (tableEntry) {
+    return tableEntry[0];
+  }
+  const preset = CUSTOM_LAMBDA_PRESETS.find((entry) => entry.value === lambda);
+  return preset ? preset.label : '';
+}
+
+/** Resolves a dropdown option value back to a wavelength (or NaN). */
+function lambdaOfOption(option: string): number {
+  const tableValue = LAMBDA_TABLE[option];
+  if (tableValue !== undefined) {
+    return tableValue;
+  }
+  const preset = CUSTOM_LAMBDA_PRESETS.find((entry) => entry.label === option);
+  return preset ? preset.value : Number.NaN;
 }
 
 /**
@@ -87,20 +105,25 @@ export function SettingsPanel() {
         <label htmlFor="settings-lambda">Lamda（X 射线波长）</label>
         <select
           id="settings-lambda"
-          value={lambdaKeyOf(params.lambda)}
+          value={lambdaOptionValue(params.lambda)}
           onChange={(event) => {
-            const lambda = LAMBDA_TABLE[event.target.value];
-            if (lambda !== undefined) {
+            const lambda = lambdaOfOption(event.target.value);
+            if (Number.isFinite(lambda)) {
               apply({ lambda });
             }
           }}
         >
-          {lambdaKeyOf(params.lambda) === '' ? (
+          {lambdaOptionValue(params.lambda) === '' ? (
             <option value="">自定义 ({params.lambda} Å)</option>
           ) : null}
           {Object.entries(LAMBDA_TABLE).map(([key, value]) => (
             <option key={key} value={key}>
               {lambdaLabel(key, value)}
+            </option>
+          ))}
+          {CUSTOM_LAMBDA_PRESETS.map((preset) => (
+            <option key={preset.label} value={preset.label}>
+              {preset.label} ({preset.value} Å)
             </option>
           ))}
         </select>

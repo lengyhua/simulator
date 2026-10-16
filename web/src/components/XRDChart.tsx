@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import {
   CartesianGrid,
+  Customized,
   Line,
   LineChart,
   ReferenceLine,
@@ -12,6 +13,7 @@ import {
 
 import { downsamplePattern } from '@/lib/xrd/downsample';
 import { serializeXrd } from '@/lib/xrd/xrd_file';
+import type { XRDPattern } from '@/lib/xrd/types';
 import { useCrystalStore } from '@/store/crystal-store';
 
 /**
@@ -27,6 +29,128 @@ const COLORS = {
 
 /** Maximum SVG points rendered (plan §5-T11: ≤ 2000, peak-preserving). */
 const MAX_CHART_POINTS = 2000;
+
+/**
+ * Peak-top labels for the hkl reference lines. `ReferenceLine`'s built-in
+ * label positions (insideTop etc.) pin every label to the plot top, so two
+ * close peaks of different height get overlapping text. Instead we render
+ * each label ourselves at (2θ_hkl, that peak's own crest height − gap),
+ * so two close peaks whose intensities differ land their labels at
+ * different y and no longer collide.
+ */
+interface PeakLabel {
+  /** 2θ of the reflection in degrees. */
+  twoTheta: number;
+  /** Label text, e.g. "2.3288 (1 1 1)". */
+  text: string;
+  /** Peak intensity of this reflection (anchors the label height). */
+  peakIntensity: number;
+}
+
+/** Minimum gap in 2θ (degrees) between labelled peaks below which the
+ *  smaller peak's label is dropped — prevents two adjacent labels from
+ *  colliding horizontally when peaks of similar height sit close together. */
+const LABEL_MIN_SPACING_DEG = 3;
+
+/**
+ * Filters the raw per-reflection labels down to a displayable set: skips the
+ * two closest-to-the-edge reflections (their labels would clip off the plot),
+ * and additionally drops a label when a previously-kept label is within
+ * `LABEL_MIN_SPACING_DEG` in 2θ *and* that label is at least as tall (keeps
+ * the taller of two overlapping labels).
+ */
+function pickVisibleLabels(labels: PeakLabel[], meta: XRDPattern['meta']): PeakLabel[] {
+  const sorted = [...labels].sort((a, b) => a.twoTheta - b.twoTheta);
+  const picked: PeakLabel[] = [];
+  for (const label of sorted) {
+    if (label.twoTheta <= meta.min + 1 || label.twoTheta >= meta.max - 1) {
+      continue; // too close to the plot edges to be legible
+    }
+    const prev = picked[picked.length - 1];
+    if (prev && label.twoTheta - prev.twoTheta < LABEL_MIN_SPACING_DEG && label.peakIntensity <= prev.peakIntensity) {
+      continue; // this label is the smaller of two close peaks — skip it
+    }
+    picked.push(label);
+  }
+  return picked;
+}
+
+/**
+ * Renders peak-top labels via Recharts' `Customized` component. `Customized`
+ * hands us the real chart-instance props — `xAxisMap` / `yAxisMap` (each with
+ * a working d3 `scale` that already encodes Recharts' actual domain AND
+ * pixel range) — so we compute the label's pixel position with
+ * `xAxisMap[key].scale(twoTheta)` / `yAxisMap[key].scale(peakIntensity)`
+ * instead of guessing at tick domains. No need to predict Recharts' internal
+ * "nice numbers" y-axis scaling.
+ *
+ * Each label sits at (2θ_hkl, that peak's own crest height − gap), so two
+ * close peaks whose intensities differ land their labels at different y and
+ * no longer collide.
+ */
+function PeakLabels(props: Record<string, any>) {
+  const xAxisMap = props.xAxisMap;
+  const yAxisMap = props.yAxisMap;
+  const labels: PeakLabel[] | undefined = props.peakLabels;
+  if (!xAxisMap || !yAxisMap || !labels || labels.length === 0) {
+    return <g />;
+  }
+  const xKey = Object.keys(xAxisMap)[0];
+  const yKey = Object.keys(yAxisMap)[0];
+  const xScale = xAxisMap[xKey]?.scale;
+  const yScale = yAxisMap[yKey]?.scale;
+  if (typeof xScale !== 'function' || typeof yScale !== 'function') {
+    return <g />;
+  }
+  const GAP_PX = 6;
+  // Plot-area top in SVG y, so the tallest peak's label doesn't run off-screen.
+  const yScaleRange = typeof yScale.range === 'function' ? yScale.range() : [0, 1];
+  const plotTopY = Math.min(yScaleRange[0] ?? 0, yScaleRange[1] ?? 0);
+  return (
+    <g style={{ pointerEvents: 'none' }}>
+      {labels.map((label) => {
+        const xPix = xScale(label.twoTheta);
+        const yPix = yScale(label.peakIntensity);
+        // Clamp so the very tallest peak's label doesn't run off the top of the plot.
+        const labelY = Math.max(plotTopY + 12, yPix - GAP_PX);
+        return (
+          <text
+            key={`${label.twoTheta.toFixed(2)}-${label.text}`}
+            x={xPix}
+            y={labelY}
+            textAnchor="middle"
+            fontSize={10}
+            fill={COLORS.axis}
+          >
+            {label.text}
+          </text>
+        );
+      })}
+    </g>
+  );
+}
+
+/**
+ * Finds the nearest grid point's intensity to a target 2θ within ±`windowDeg`
+ * in a (twoTheta, intensity) series; -1 when no grid point is close enough.
+ */
+function peakIntensityNear(
+  twoTheta: readonly number[],
+  intensity: readonly number[],
+  target: number,
+  windowDeg = 0.05,
+): number {
+  let best = -1;
+  let bestDx = Infinity;
+  for (let i = 0; i < twoTheta.length; i += 1) {
+    const dx = Math.abs(twoTheta[i] - target);
+    if (dx <= windowDeg && dx < bestDx) {
+      bestDx = dx;
+      best = i;
+    }
+  }
+  return best >= 0 ? intensity[best] : -1;
+}
 
 /** Sanitizes a file name for the Blob download (keep CJK, dots, dashes). */
 function safeFileName(name: string): string {
@@ -56,6 +180,33 @@ export function XRDChart() {
         : [],
     [pattern],
   );
+
+  // Peak-top label data: for each in-range hkl reflection, anchor the label
+  // to that peak's own crest intensity (so labels at different heights don't
+  // overlap even when two peaks sit close in 2θ). Uses the FULL (un-
+  // downsampled) grid for the intensity lookup so the crest is exact.
+  const peakLabels = useMemo(() => {
+    if (!pattern) {
+      return [];
+    }
+    const raw: PeakLabel[] = [];
+    for (const reflection of pattern.reflections) {
+      const peakIntensity = peakIntensityNear(
+        pattern.twoTheta,
+        pattern.intensity,
+        reflection.twoTheta,
+      );
+      if (peakIntensity <= 0) {
+        continue;
+      }
+      raw.push({
+        twoTheta: reflection.twoTheta,
+        text: `${reflection.d.toFixed(4)} (${reflection.h} ${reflection.k} ${reflection.l})`,
+        peakIntensity,
+      });
+    }
+    return pickVisibleLabels(raw, pattern.meta);
+  }, [pattern]);
 
   const handleExport = useCallback(() => {
     if (!crystal || !pattern) {
@@ -126,21 +277,23 @@ export function XRDChart() {
               fontSize: 12,
             }}
           />
-          {pattern.reflections.map((reflection) => (
+          {peakLabels.map((label) => (
             <ReferenceLine
-              key={`${reflection.h}-${reflection.k}-${reflection.l}`}
-              x={reflection.twoTheta}
+              key={label.text}
+              x={label.twoTheta}
               stroke={COLORS.accent}
               strokeDasharray="4 3"
               strokeOpacity={0.55}
-              label={{
-                value: `(${reflection.h} ${reflection.k} ${reflection.l})`,
-                position: 'insideTopRight',
-                fill: COLORS.axis,
-                fontSize: 10,
-              }}
             />
           ))}
+          {/* 峰顶 d/hkl 标注：用 Customized 拿到 Recharts 真实的 x/y scale，
+              直接算像素坐标（不再靠 ReferenceLine 的 label 注入机制，那个
+              不会把 viewBox 传给自定义 label 组件）。 */}
+          <Customized
+            component={(props: unknown) => (
+              <PeakLabels peakLabels={peakLabels} {...(props as object)} />
+            )}
+          />
           <Line
             type="monotone"
             dataKey="intensity"

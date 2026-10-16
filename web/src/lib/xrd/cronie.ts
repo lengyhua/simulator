@@ -18,7 +18,9 @@
  * The hand-transcribed IUCr / Cromer–Mann table (cronie_data.ts) is retained
  * for cross-validation in tests only — the engine never reads it.
  *
- * Regenerate with: python scripts/gen_factor_dat.py
+ * Regenerate cronie_data.ts with: python web/scripts/gen_cronie.py
+ * (gen_factor_dat.py emits factor_data.ts, the runtime table this module
+ * actually uses.)
  */
 
 import { FACTOR_COEFFS, type FactorCoefficients } from './factor_data';

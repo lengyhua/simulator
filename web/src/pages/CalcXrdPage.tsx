@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { PlatformHeader } from '@/components/shell/PlatformHeader';
 import { SamplePicker } from '@/components/SamplePicker';
 import { CrystalInput } from '@/components/CrystalInput';
@@ -5,22 +7,27 @@ import { AtomTable } from '@/components/AtomTable';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { XRDChart } from '@/components/XRDChart';
 import { HKLTable } from '@/components/HKLTable';
+import { SingleXrdFloat } from '@/components/SingleXrdFloat';
+import { WyckoffFloat } from '@/components/WyckoffFloat';
 import { useCrystalStore } from '@/store/crystal-store';
 
 /**
- * CalcXRD module page — platform shell + module body (plan §5-T13).
+ * CalcXRD module page — platform shell + module body (plan §5-T13, UI v2
+ * 2026-10-16).
  *
- * Final layout: left column hosts the input flow (sample loading, crystal
- * header form, atom table, calculation settings) with the primary compute
- * action; the right column hosts the results (broadened curve with hkl
- * reference lines, discrete hkl table). The store invalidates the pattern on
- * every crystal/param edit, mirroring the legacy program's explicit
- * "powder XRD" button.
+ * Layout: left column = input flow (sample / crystal header / atom table /
+ * calc settings), right column = results (powder curve + hkl table).
+ * Two floating windows (single XRD table, Wyckoff-symbol table) mirror the
+ * legacy program's separate top-level windows; both are triggered from the
+ * chart-header action bar and close on × / backdrop click / Esc.
  */
 export default function CalcXrdPage() {
   const error = useCrystalStore((state) => state.error);
   const hasPattern = useCrystalStore((state) => state.pattern !== null);
+  const hasCrystal = useCrystalStore((state) => state.crystal !== null);
   const compute = useCrystalStore((state) => state.compute);
+  const [singleOpen, setSingleOpen] = useState(false);
+  const [wyckoffOpen, setWyckoffOpen] = useState(false);
 
   return (
     <>
@@ -56,12 +63,34 @@ export default function CalcXrdPage() {
               <SettingsPanel />
             </div>
             <div className="module-column">
+              <div className="float-trigger-row">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setSingleOpen(true)}
+                  disabled={!hasPattern}
+                  title={hasPattern ? '查看 single XRD 逐反射表（可导出）' : '先计算图谱'}
+                >
+                  single XRD
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setWyckoffOpen(true)}
+                  disabled={!hasCrystal}
+                  title={hasCrystal ? '查看当前空间群的 Wyckoff 位置表' : '先加载晶体'}
+                >
+                  Wyckoff symbol
+                </button>
+              </div>
               <XRDChart />
               <HKLTable />
             </div>
           </div>
         </div>
       </main>
+      <SingleXrdFloat open={singleOpen} onClose={() => setSingleOpen(false)} />
+      <WyckoffFloat open={wyckoffOpen} onClose={() => setWyckoffOpen(false)} />
     </>
   );
 }

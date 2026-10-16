@@ -11,6 +11,18 @@ import type { XrdParams } from './types';
 /**
  * X-ray wavelength table (Kα₁, in Å) — plan §7.
  * Keys are the labels shown in the wavelength dropdown (T10).
+ *
+ * Cu = 1.54056 was GUI-verified against the legacy program (2026-10-16
+ * screenshot "CuKa1 1.54056"). The full legacy 6-item list was extracted
+ * 2026-10-17 via Win32 (CB_GETLBTEXT): CuKa1 1.54056 / CuKa 1.54178 /
+ * FeKa1 1.93604 / FeKa 1.93736 / MoKa1 0.71930 / MoKa 0.71073.
+ *
+ * NOTE: Mo uses the CORRECT standard value 0.70930 — the legacy dropdown
+ * carries a data-entry typo "MoKa1 0.71930" (its sibling weighted entry
+ * MoKa 0.71073 and Mo Kα2 0.71359 are both correct), registered as defect
+ * #11 in `docs/DATA-REFERENCE.md` §4. Fe = 1.93604 matches the legacy
+ * FeKa1 entry; Cr is NOT in the legacy list (web-only extension, dispersion
+ * via Henke data — see `henke_dispersion.ts`).
  */
 export const LAMBDA_TABLE: Readonly<Record<string, number>> = Object.freeze({
   Cu: 1.54056,
@@ -19,6 +31,18 @@ export const LAMBDA_TABLE: Readonly<Record<string, number>> = Object.freeze({
   Co: 1.78897,
   Fe: 1.93604,
 });
+
+/**
+ * Custom wavelength entries supported by the dropdown (in addition to
+ * {@link LAMBDA_TABLE}). The legacy program's `lamda` field is editable, so a
+ * numeric value outside the 5 standard targets is legal; these give the
+ * common non-standard targets a proper label instead of "自定义".
+ */
+export const CUSTOM_LAMBDA_PRESETS: ReadonlyArray<{ label: string; value: number }> = Object.freeze([
+  { label: 'Ti Kα', value: 2.8308 },
+  { label: 'Al Kα', value: 7.0919 },
+  { label: 'Cu Kα₂ (K-beta)', value: 1.54433 },
+]);
 
 /** Default wavelength: Cu Kα (Å) — the Al.xrd reference was measured with it. */
 export const DEFAULT_LAMBDA: number = LAMBDA_TABLE.Cu;
@@ -40,6 +64,12 @@ export const SCAN_STEP: number = 0.01;
  * **0.10**; FWHM = 2.355σ ≈ 0.2355°, which matches the Al.xrd profile
  * point-by-point (intensity at ±0.01° from a crest = crest·exp(−0.005)).
  * The earlier `q = 0.25` reading treated q as a FWHM and is deprecated.
+ *
+ * NOTE: despite the help RTF printing a `1/(q√2π)` density-normalized form,
+ * the actual legacy numerics (both its `.xrd` files and its own curve
+ * display) use a CREST-normalized form `I(2θ) = Σ I_hkl·exp(−(2θ−2θ_hkl)²/2q²)`,
+ * i.e. the peak top equals I_hkl with no `1/(q√2π)` factor. See
+ * `docs/DATA-REFERENCE.md` §4 defect #9 and `gaussian.ts` for the evidence.
  */
 export const DEFAULT_Q: number = 0.10;
 

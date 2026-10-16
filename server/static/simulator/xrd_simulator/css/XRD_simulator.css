@@ -1,0 +1,1299 @@
+/*
+Created  by Andres Vasquez for AMMRF'S https://www.myscope.training
+This work is licensed under a Creative Commons Attribution 4.0 International License.
+Modernized: XRD模拟仿真辅助分析平台 — dark instrument UI
+*/
+
+/* ─── Token System ─────────────────────────────────────────────── */
+:root {
+  --bg:        #1E2028;
+  --surface:   #2A2D3E;
+  --surface-2: #232636;
+  --border:    #454B6B;
+  --border-soft: rgba(139,147,168,0.32);
+  --accent:    #5B8DEF;
+  --accent-glow: rgba(91,141,239,0.25);
+  --text:       #E6E8F0;
+  /* 次级文字比原先（#9BA3C2）提亮一档：11–12px 小字在深色底上，偏暗的灰蓝
+     读起来就是"发虚/不清晰"。--text-disabled/--text-faint 供禁用态实色使用。 */
+  --text-dim:   #AEB6CC;
+  --text-disabled: #959CB0;  /* 禁用按钮文字 */
+  --text-faint:     #7E8598;  /* 禁用标签/图标/读数 */
+  --ok:         #4ADE80;
+  --warn:       #FBBF24;
+  --danger:     #F87171;
+  --radius:     8px;
+  --radius-lg:  12px;
+  /* CJK faces are listed explicitly so Chinese labels do not fall back to an
+     arbitrary system font. 全线改用 Windows 原生系统字体（Segoe UI + 微软雅黑）：
+     通用无需下载，小字号深色背景下笔画厚实均匀，消除 Inter 细笔画的锯齿感。 */
+  --font-sans:  'Segoe UI', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+  --font-mono:  'Consolas', 'JetBrains Mono', 'Cascadia Mono', 'Courier New', monospace;
+}
+
+html {
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  /* 关键：不要设 -webkit-font-smoothing: antialiased / text-rendering: optimizeLegibility。
+     在 Windows Chrome 上这两者会关闭 ClearType 次像素抗锯齿（并把字形降为灰度 AA），
+     11–13px 浅色小字在深色底上会明显发虚、笔画变细。保持默认 auto 才有 ClearType
+     的三倍水平采样，文字才"实"。 */
+  -webkit-font-smoothing: auto;
+}
+
+html, body {
+  height: 100%;
+}
+
+/* ─── Platform Shell ───────────────────────────────────────────── */
+.platform-header {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  position: relative; /* positioning context for #top-instructions */
+}
+
+.platform-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px 10px;
+}
+
+.logo {
+  width: 30px;
+  height: 30px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.platform-name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  /* 标题即返回主页链接：无下划线默认态，悬停/聚焦给出明确反馈 */
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color .15s ease;
+}
+
+.platform-name:hover,
+.platform-name:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  outline: none;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.tab {
+  padding: 9px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: color .15s;
+  font-family: var(--font-sans);
+  text-decoration: none;
+}
+
+.tab:hover { color: var(--text); }
+
+.tab.active {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.tab:disabled {
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+/* ─── Instrument Container ─────────────────────────────────────── */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+.platform-header {
+  flex: 0 0 auto;
+}
+
+#simulator-base {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  background: var(--surface);
+  border: none;
+  border-radius: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+}
+
+/* ─── Top bar (instructions strip inside instrument) ───────────── */
+#top-bar {
+  display: none; /* replaced by platform shell */
+}
+
+#top-instructions {
+  position: absolute;
+  /* 右上角：完全位于 header 内部，不遮挡下方卡片内容 */
+  top: 16px;
+  right: 24px;
+  background: rgba(30,32,40,0.9);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 20px;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity .3s;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+/* class is toggled on #top-instructions itself (simulator_snippets.js
+   toogle_fn) — must be a standalone rule, not a descendant selector */
+.top-instructions-on {
+  animation: instructions-on .18s ease-out .05s 1 normal forwards;
+}
+
+@keyframes instructions-on {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+#top-instructions-txt {
+  font-size: 14px;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* the scan step clears the instruction text; without this the pill keeps its
+   padding + border and shows up as an empty dark chip over the diagram */
+#top-instructions:has(#top-instructions-txt:empty) {
+  display: none;
+}
+
+/* ─── Left Control Panel ───────────────────────────────────────── */
+#controls-left {
+  width: 30%;
+  height: 100%;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Section labels */
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* Card groups */
+.field-group {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.045), 0 1px 3px rgba(0,0,0,0.22);
+}
+
+.row2 { display: flex; gap: 10px; }
+.row2 > * { flex: 1; }
+
+/* Selects */
+select {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239BA3C2' d='M6 8L2 4h8L6 8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+}
+
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+select:disabled {
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+/* Buttons */
+button, .btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-sans);
+  /* 13px + 600：Segoe UI 没有 500 字重，font-weight:500 会按 CSS 匹配规则回落到
+     400 Regular，深色底上笔画过细显得发虚；600 命中 Semibold，笔画扎实清晰。 */
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+  -webkit-appearance: none;
+  outline: none;
+  display: inline-block;
+  text-align: center;
+}
+
+/* 控件按钮统一 36px 高（与 selectmenu 下拉按钮等高，舒适的点选目标） */
+.btn { min-height: 36px; }
+
+button:hover:not(:disabled), .btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+/* 禁用态：实色暗化（禁用时半透明混合会让文字边缘发虚） */
+button:disabled, .btn:disabled, .btn-disabled {
+  cursor: not-allowed;
+  border-color: var(--border-soft);
+  background: var(--surface-2);
+  color: var(--text-disabled);
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: #4A7DEE;
+  border-color: #4A7DEE;
+}
+
+/* 锁定的主按钮：保留蓝色家族暗示"这是主操作"，但实色低对比、不发糊 */
+.btn-primary:disabled {
+  background: rgba(91,141,239,0.16);
+  border-color: rgba(91,141,239,0.38);
+  color: #9DB4E8;
+  opacity: 1;
+}
+
+/* Readouts */
+.readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  padding: 8px 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+.readout .label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.readout .value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.readout.accent .value {
+  color: var(--accent);
+}
+
+/* Angle adjust buttons (inside .readout, next to label + value) */
+/* Upstream sizes these as .angle{5.5vw x 2.1vw} + .btn-stats{width:100%;height:50%}.
+   Shrinking them to 22x14 made the steppers almost impossible to hit, so keep the
+   upstream proportions (two stacked half-height buttons filling the well). */
+.angle { display:flex; flex-direction:column; gap:2px; flex:0 0 auto; width:56px; height:38px; }
+.btn-stats { width:100%; height:calc(50% - 1px); padding:0; border:1px solid var(--border); background:var(--surface-2); color:var(--text-dim); border-radius:4px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+.btn-stats:hover:not(:disabled) { color:var(--text); border-color:var(--accent); }
+.btn-stats:disabled { color:var(--text-faint); border-color:var(--border-soft); background:var(--surface-2); cursor:not-allowed; }
+
+/* Status pill */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: default;
+  user-select: none;
+}
+
+.status-pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.status-pill.on {
+  color: var(--ok);
+  border-color: rgba(74,222,128,0.3);
+}
+
+.status-pill.on .dot {
+  background: var(--ok);
+  box-shadow: 0 0 6px rgba(74,222,128,0.5);
+}
+
+/* jQuery UI selectmenu restyle */
+.ui-button {
+  background: var(--surface) !important;
+  border: 1px solid var(--border-soft) !important;
+  color: var(--text) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  padding: 0 12px !important;
+  height: 36px !important;
+  box-sizing: border-box;
+  border-radius: 6px !important;
+  cursor: pointer;
+  width: 100%;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.ui-button:hover:not(.ui-state-disabled) {
+  border-color: var(--accent) !important;
+}
+
+.ui-button .ui-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239BA3C2' d='M6 8L2 4h8L6 8z'/%3E%3C/svg%3E") !important;
+  background-color: transparent !important;
+  width: 12px !important;
+  height: 12px !important;
+}
+
+.ui-selectmenu-text {
+  font-family: var(--font-sans) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: var(--text) !important;
+  letter-spacing: 0.01em;
+  margin-right: 28px !important;
+  margin-top: 0 !important;
+  /* 36px 按钮 - 2px 边框：行高撑满内容盒，文字垂直居中 */
+  line-height: 34px;
+}
+
+[id$="-menu"] {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+
+.ui-menu {
+  background: var(--surface) !important;
+}
+
+.ui-menu-item-wrapper {
+  color: var(--text) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 14px !important;
+  padding: 8px 14px !important;
+  font-weight: 600 !important;
+}
+
+.ui-menu-item-wrapper:hover {
+  background: var(--accent-soft, rgba(91,141,239,0.12)) !important;
+}
+
+/* 禁用菜单项（class 挂在 li 上）：实色暗化，!important 压过上面的文字色基类 */
+.ui-menu .ui-state-disabled .ui-menu-item-wrapper {
+  color: var(--text-faint) !important;
+  cursor: not-allowed;
+}
+
+/* 禁用项不响应悬停高亮（li.ui-state-disabled 的祖先判定） */
+.ui-menu li:not(.ui-state-disabled) .ui-menu-item-wrapper:hover {
+  background: var(--accent-soft, rgba(91,141,239,0.12)) !important;
+}
+
+.ui-menu .ui-state-active .ui-menu-item-wrapper {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+
+/* 禁用的 selectmenu：实色暗化（!important 压过上面的深色主题基类） */
+.ui-button.ui-state-disabled,
+.ui-button.ui-state-disabled .ui-selectmenu-text {
+  color: var(--text-disabled) !important;
+}
+
+.ui-button.ui-state-disabled {
+  background: var(--surface-2) !important;
+  border-color: var(--border-soft) !important;
+  cursor: not-allowed;
+}
+
+/* ─── Layout helpers (existing structure) ─────────────────────── */
+/* 第一行：双列网格。
+   行1 = "样品"/"舱门"两个标签（同高同行）；行2 = 样品下拉 + 开门按钮（同高 36px）。
+   "舱门"列宽 auto，自动取标签与按钮的较大值，标签因此与按钮等宽并居中。 */
+#first-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  row-gap: 10px;
+  align-items: stretch;
+}
+
+#first-row .section-label {
+  grid-column: 1;
+  grid-row: 1;
+  margin-bottom: 0;
+}
+
+#first-row > fieldset {
+  grid-column: 1;
+  grid-row: 2;
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+#doors-div {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 标签下间距 = 网格行距 10px：开门按钮顶边与下拉按钮顶边精确对齐 */
+#doors-div .btn-title {
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+/* this container already provides flex gap — avoid double spacing */
+#third-row .section-label {
+  margin-bottom: 0;
+}
+
+#second-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+#second-row .two-btns {
+  display: flex;
+  gap: 10px;
+}
+
+/* standby / power cards: label on top, control below (symmetric) */
+#second-row .field-group {
+  display: flex;
+}
+
+#second-row .btn-with-title {
+  flex: 1;
+}
+
+.standby-wrap,
+.power-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+/* standby pill: dot-only LED, centered under the label */
+.standby-wrap {
+  align-items: center;
+}
+
+/* the upstream standby hit area is just the 8px dot + 7px padding (~22px);
+   give it a proper pill so it is easy to click with a mouse */
+.standby-wrap #btn-standby {
+  padding: 9px 22px;
+  min-width: 78px;
+  min-height: 36px;
+  justify-content: center;
+}
+
+/* power button fills the card width */
+.power-wrap .btn {
+  flex: 1;
+}
+
+#third-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#step-options {
+  display: flex;
+  gap: 10px;
+}
+
+#step-options fieldset {
+  flex: 1;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+#scantime-div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#bottom-row {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  margin-bottom: 44px;   /* lift the action buttons off the very bottom */
+  padding-top: 12px;
+}
+
+#bottom-row button {
+  flex: 1;
+}
+
+/* labels in field groups */
+.field-group label,
+.btn-with-title label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  user-select: none;
+}
+
+/* 禁用标签：实色暗化（替代 opacity，小字号字形保持清晰；
+   特异性需高于 .field-group label 才能覆盖其 color） */
+.field-group label.label-disabled,
+.btn-with-title label.label-disabled {
+  color: var(--text-faint);
+}
+
+/* 预计时间行：标签与数值横向排列，无需标签下间距 */
+#scantime-div .btn-title { margin-bottom: 0; }
+
+#scantime-val {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* Readout rows for stats */
+.stats-div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stats {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ─── Right Instrument View ────────────────────────────────────── */
+#canvas-div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  min-width: 0;
+}
+
+/* X-ray diagram card */
+.diagram-card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.045), 0 2px 8px rgba(0,0,0,0.25);
+}
+
+/* inner positioning context: centres a fixed-aspect box holding the diagram.
+   The SVG viewBox is 2640x2080; letting the svg fill a wide/short card would
+   letterbox it (content squeezed to the middle) and every absolutely-placed
+   overlay — plus the JS-driven rotation pivots — would land in the wrong
+   place. Same trick as .curve-box on the diffractogram card. */
+.diagram-card .diagram-inner {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* height-driven so the card can stay wide: the box takes the available
+   height and derives its width from the SVG's own aspect ratio. (Using
+   width:100% + max-height would clamp the height but keep the full width,
+   leaving the svg letterboxed — which is what pushed the overlays off.) */
+.diagram-box {
+  position: relative;
+  height: 100%;
+  aspect-ratio: 2640 / 2080;
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+
+/* overlay bar pinned to the diagram itself, not to the whole card */
+.diagram-overlay {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.diagram-overlay #controls-right {
+  pointer-events: auto;
+}
+
+.diagram-range {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.diagram-card .card-label {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+#controls-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  z-index: 10;
+  width: auto;
+  height: auto;
+}
+
+/* Shutter button */
+#btn-shutter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+#btn-shutter::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+
+#btn-shutter.open {
+  border-color: rgba(248,113,113,0.4);
+  color: var(--danger);
+}
+
+#btn-shutter.open::before {
+  background: var(--danger);
+  box-shadow: 0 0 6px rgba(248,113,113,0.5);
+}
+
+/* JS toggles the "shutter-active" class (XRD_simulator.js) — style it too */
+#btn-shutter.shutter-active {
+  border-color: rgba(248,113,113,0.4);
+  color: var(--danger);
+}
+
+#btn-shutter.shutter-active::before {
+  background: var(--danger);
+  box-shadow: 0 0 6px rgba(248,113,113,0.5);
+}
+
+/* SVG diagram (injected by XRD_radiometer_1.js) */
+#svg-diagram {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: none;
+  border-radius: 0;
+}
+
+/* ── Diagram internals driven by set_angles_fun() ──────────────────
+ * These rules live in the upstream stylesheet and are load-bearing:
+ * every rotating part needs its own transform-origin, otherwise the
+ * browser falls back to 50% 50% and the detectors / angle indicators
+ * swing around the wrong pivot. The opacity:0 defaults are likewise
+ * required — the JS reveals each part as the lesson progresses.
+ * Values are copied verbatim from the upstream build.
+ */
+#svg-diagram g#detector-l {
+  transform-origin: 49.1% 62.4%;
+  transform: translate(-2.2vw, -2.3vw) rotate(5deg);
+}
+
+#svg-diagram g#detector-r {
+  transform-origin: 50.1% 63.5%;
+  transform: translate(-4.4vw, -4.4vw) rotate(-5deg);
+}
+
+#svg-diagram g#door-l {
+  transform: translate(0vw, 0);
+}
+
+#svg-diagram g#door-r {
+  transform: translate(0vw, 0);
+}
+
+#svg-diagram g#xrd-specimen {
+  opacity: 0;
+  transform-origin: 2.5% 0%;
+  filter: url(#dragfilter);
+}
+
+#svg-diagram g#end-angle-group {
+  opacity: 0;
+  transform-origin: 48% 61%;
+  transform: rotate(15.75deg);
+}
+
+#start-mask {
+  opacity: 0;
+  transform-origin: 48% 61%;
+  transform: rotate(-15.75deg);
+}
+
+#svg-diagram g#start-angle-line {
+  opacity: 0;
+  transform-origin: 23.5% 29.8%;
+  transform: rotate(0deg);
+}
+
+/* X-ray beam: dashed, dashed offset animated so the beam appears to travel */
+#svg-diagram line#ray-l,
+#svg-diagram line.ray-r,
+#svg-diagram line#ray-r {
+  opacity: 0;
+  fill: none;
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 4px;
+  stroke-dashoffset: 0;
+  animation: stroke 0.2s linear infinite;
+}
+
+#svg-diagram line.ray-r {
+  opacity: 1;
+  stroke: #2E9AFE;
+}
+
+@keyframes stroke {
+  from {
+    stroke-dashoffset: 8px;
+  }
+}
+
+/* Diffractogram card */
+.diffractogram-card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+/*
+ * The diffractogram stage keeps the SVG's native 835:655 aspect ratio so the
+ * axes (drawn into #svg-curve) and the data curve (drawn into #canvas-curve,
+ * bitmap 740×570) stay aligned. We center a fixed-aspect box; the SVG fills
+ * the whole box, and the canvas is positioned over the SVG plot area only.
+ *
+ * Percentage derivation (user units inside viewBox="-20 -15 835 655"):
+ *   axis group translate(50,10) → plot area x∈[50.5,790.5], y∈[10.5,580.5];
+ *   the canvas bitmap 740×570 is exactly the plot area size.
+ *   IMPORTANT: the viewBox origin is (-20,-15), not (0,0), so every user
+ *   coordinate must be offset before dividing by the viewBox size:
+ *     left   = (50.5 - (-20)) / 835 =  70.5/835 = 8.4431%
+ *     top    = (10.5 - (-15)) / 655 =  25.5/655 = 3.8931%
+ *     width  = 740/835 = 88.6228%      height = 570/655 = 87.0229%
+ *   (Using 50.5/835 and 10.5/655 drops the origin offset and shifts the curve
+ *    ~24px left / ~7px up, which reads as "curve 左侧越出坐标系" and makes the
+ *    x-axis values line up with the wrong angles.)
+ *   Verified against the upstream build: canvas-vs-axis offset < 1px.
+ */
+.curve-stage { flex:1; min-height:0; position:relative; display:flex; align-items:center; justify-content:center; }
+.curve-box { position:relative; width:100%; aspect-ratio:835/655; max-height:100%; background:var(--surface-2); border-radius:6px; overflow:hidden; }
+#svg-curve { position:absolute; top:0; left:0; width:100%; height:100%; background:transparent; }
+#canvas-curve { position:absolute; left:8.4431%; top:3.8931%; width:88.6228%; height:87.0229%; pointer-events:none; }
+
+.diffractogram-card .card-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* Axis + curve text/lines inside the injected SVG.
+   The upstream build paints these #000000 on a light panel; on the dark panel
+   they must be lightened or the axes/ticks become invisible. Prose labels read
+   better in the UI sans face than in the monospace one. */
+#svg-curve text {
+  fill: #E2E6F0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* Axis titles as HTML overlays. #svg-curve non-uniformly stretches its
+   835x655 viewBox into the wide .curve-box (preserveAspectRatio="none"),
+   which distorts any <text> inside it — the titles used to render squashed.
+   Rendering them as HTML keeps natural glyph shapes; positions use the same
+   plot-area percentage math as #canvas-curve, so they track any box size. */
+.curve-axis-title {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #9DBAF5;
+  white-space: nowrap;
+}
+
+/* X title: centred under the plot (plot centre x = 52.75%), below the axis
+   line (90.92% of box height) and its tick labels */
+.curve-axis-title--x {
+  left: 52.75%;
+  bottom: 1.5%;
+  transform: translateX(-50%);
+}
+
+/* Y title: rotated, centred on the plot's vertical span (47.4%), left of the
+   y axis and tick labels */
+.curve-axis-title--y {
+  left: 2.4%;
+  top: 47.4%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
+/* domain/axis lines + tick marks.
+   #svg-curve stretches its 835x655 viewBox into a ~1006x295 box
+   (preserveAspectRatio="none"), so user-unit stroke widths render ~2.7x wider
+   on the vertical axis than on the horizontal one — the Y axis looked twice as
+   thick as the X axis. non-scaling-stroke pins both to the same screen width. */
+#svg-curve .tick line {
+  stroke: #9AA2BE;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* the two axis lines themselves read slightly brighter than the ticks */
+#svg-curve .domain {
+  stroke: #8E96B0;
+  stroke-width: 1.2px;
+  vector-effect: non-scaling-stroke;
+}
+
+#svg-curve #degree-l text,
+#svg-curve #degree-r text,
+#svg-curve .y-group {
+  opacity: 0;
+}
+
+#svg-curve #degree-l text.y-visible,
+#svg-curve #degree-r text.y-visible,
+#svg-curve g.y-group.y-visible {
+  opacity: 1;
+}
+
+/* y-axis tick marks: match the x-axis ticks (this rule wins on specificity,
+   so it has to repeat the colour or the y ticks render dimmer than the x ones) */
+#svg-curve g.y-visible line {
+  stroke: #9AA2BE;
+  opacity: 0.9;
+}
+
+/* ─── Modal ────────────────────────────────────────────────────── */
+.any-modal {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15,17,24,0.85);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: opacity 260ms cubic-bezier(.15, -0.03, .49, 1.14) 10ms;
+}
+
+.modal-window {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  width: 320px;
+  overflow: hidden;
+}
+
+.modal-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title p {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.close-modal {
+  color: var(--text-dim);
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+  transition: color .15s;
+}
+
+.close-modal:hover { color: var(--text); }
+
+.modal-content {
+  padding: 20px 18px;
+}
+
+.modal-content .loading-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.loading-bar::after {
+  content: '';
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: loading-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+/* ─── Utilities ───────────────────────────────────────────────── */
+.totally-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  overflow: hidden;
+  opacity: 0;
+}
+
+.not-visible { opacity: 0; visibility: hidden; }
+.half-visible { opacity: .25; }
+.full-opacity { opacity: 1 !important; }
+.no-height { height: 0; padding: 0; visibility: hidden; }
+.no-cursor { cursor: none; }
+
+.flex { display: flex; }
+.flex-evenly { display: flex; justify-content: space-evenly; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+.modal-is-open {
+  filter: blur(2px);
+  transition: filter 260ms cubic-bezier(.15, -0.03, .49, 1.14) 10ms;
+}
+
+/* ─── Focus visible ───────────────────────────────────────────── */
+button:focus-visible,
+select:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  #simulator-base { display: none; }
+  .platform-title-row { padding: 10px 16px; }
+  .tab { padding: 8px 14px; font-size: 12px; }
+}
+
+/* ─── Legacy state classes (JS toggles these) ────────────────── */
+
+/* #btn-standby as a pill button — JS toggles round-btn-active */
+#btn-standby {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 6px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+#btn-standby .pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex-shrink: 0;
+  /* decorative only — let clicks fall through to the button. With hit testing
+     on, e.target becomes the span (no id) and the click handler's
+     $("#" + e.target.id) turns into $("#") which jQuery rejects with a
+     Syntax error, killing the standby action for clicks on the dot. */
+  pointer-events: none;
+}
+
+/* 禁用态实色暗化。注意源顺序：必须放在 round-btn-active / green-halo
+   之前（特异性相同，后者靠源顺序胜出），保证电源爬升闪烁期间 LED 仍是绿色 */
+#btn-standby[disabled] {
+  cursor: not-allowed;
+  border-color: var(--border-soft);
+  color: var(--text-faint);
+}
+
+#btn-standby[disabled] .pill-dot { background: var(--text-faint); }
+
+#btn-standby.round-btn-active {
+  border-color: rgba(74,222,128,0.4);
+  color: var(--ok);
+}
+
+#btn-standby.round-btn-active .pill-dot {
+  background: var(--ok);
+  box-shadow: 0 0 8px rgba(74,222,128,0.6);
+}
+
+/* blinker animation for standby button while powering up */
+.blinker {
+  animation: standby-blinker 0.5s linear infinite;
+}
+
+@keyframes standby-blinker {
+  0%, 100% { border-color: var(--border); }
+  50% { border-color: rgba(91,141,239,0.6); }
+}
+
+/* green-halo: power ramp complete, button glows green */
+#btn-standby.green-halo {
+  border-color: rgba(74,222,128,0.5);
+  color: var(--ok);
+  box-shadow: 0 0 14px rgba(74,222,128,0.35);
+}
+
+#btn-standby.green-halo .pill-dot {
+  background: var(--ok);
+  box-shadow: 0 0 8px rgba(74,222,128,0.6);
+}
+
+/* #btn-power — JS toggles btn-active class */
+#btn-power.btn-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  cursor: not-allowed;
+}
+
+/* generic .btn-active for other buttons */
+.btn.btn-active,
+button.btn-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* #btn-shutter as a pill — JS toggles shutter-active and sets .html() */
+#btn-shutter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 4px 14px;
+  border-radius: 20px;
+  cursor: default;
+  transition: all .2s;
+}
+
+#btn-shutter::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex-shrink: 0;
+}
+
+#btn-shutter.shutter-active {
+  border-color: rgba(248,113,113,0.4);
+  color: var(--danger);
+}
+
+#btn-shutter.shutter-active::before {
+  background: var(--danger);
+  box-shadow: 0 0 6px rgba(248,113,113,0.5);
+}
+
+/* disabled state for generic buttons (颜色/背景由 button:disabled 规则提供) */
+.btn-disabled,
+button[disabled] {
+  cursor: not-allowed;
+}
+
+/* stats readouts — .div-disabled dims them（实色暗化，不用 opacity） */
+.div-disabled { opacity: 1; filter: none; }
+.div-disabled .label { color: var(--text-faint); }
+.div-disabled.readout .value { color: var(--text-disabled); }
+#scantime-div.div-disabled #scantime-val { color: var(--text-disabled); }
+
