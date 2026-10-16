@@ -1380,7 +1380,8 @@
         "2.00": 2.6035
       },
       "n_s": 66,
-      "note": ""
+      "note": "",
+      "tail_note": "non-monotone between s=1.90 and s=1.95 — 4-Gaussian+c approximation artifact; exact evaluation of published coefficients"
     },
     {
       "symbol": "Ti2",
@@ -1641,7 +1642,8 @@
         "2.00": 2.7517
       },
       "n_s": 66,
-      "note": ""
+      "note": "",
+      "tail_note": "non-monotone between s=1.95 and s=2.00 — 4-Gaussian+c approximation artifact; exact evaluation of published coefficients"
     },
     {
       "symbol": "V2",

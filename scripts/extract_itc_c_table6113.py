@@ -235,11 +235,26 @@ def main():
                   f"note={note}")
             continue
         a, b, c = vals[:4], vals[4:8], vals[8]
-        sv = {}
+        e0 = round(sum(a) + c, 4)
+        s_values = {}
         for s in S_GRID:
             v = c + sum(ai * math.exp(-bi * s * s) for ai, bi in zip(a, b))
-            sv[f"{s:.2f}"] = round(v, 4)
-        e0 = round(sum(a) + c, 4)
+            s_values[f"{s:.2f}"] = round(v, 4)
+        # High-s tail check: for negative-c coefficient sets (Sc3+, Ti4+
+        # and other strongly-bound closed-shell ions) the 4-Gaussian+c
+        # approximation is *not* monotone over its full validity range
+        # (Table 6.1.1.4's own "Max error" column notes non-zero
+        # deviation up to s=2.0 for these species — the +c constant
+        # exceeds the tail of the Gaussian sum).  Flag it in the record
+        # instead of hiding it; values themselves are exact evaluations
+        # of the published coefficients.
+        mono_tail_violation = None
+        for i in range(len(S_GRID) - 1):
+            ka = f"{S_GRID[i]:.2f}"
+            kb = f"{S_GRID[i + 1]:.2f}"
+            if s_values[kb] > s_values[ka] + 1e-9:
+                mono_tail_violation = f"non-monotone between s={ka} and s={kb}"
+                break
         rec = {
             "symbol": lab,
             "gemmi_symbol": sym,
@@ -250,7 +265,7 @@ def main():
                 "b1": b[0], "b2": b[1], "b3": b[2], "b4": b[3],
                 "c": c,
             },
-            "s_values": sv,
+            "s_values": s_values,
             "n_s": len(S_GRID),
             "note": note,
         }
@@ -263,12 +278,16 @@ def main():
                 pv = ps.get(key)
                 if pv is None:
                     continue
-                dv = abs(sv[key] - pv)
+                dv = abs(s_values[key] - pv)
                 if dv > 0.02:
-                    diffs.append(f"{key}: pdf={pv} vs {sv[key]:.4f} "
+                    diffs.append(f"{key}: pdf={pv} vs {s_values[key]:.4f} "
                                  f"(Δ={dv:.4f})")
             if diffs:
                 rec["pdf_crosscheck"] = diffs
+        if mono_tail_violation:
+            rec["tail_note"] = (mono_tail_violation +
+                                " — 4-Gaussian+c approximation artifact; "
+                                "exact evaluation of published coefficients")
         species_out.append(rec)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
