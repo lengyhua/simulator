@@ -240,6 +240,6 @@ python3 scripts/cross_validate_ff.py --check-ce # 只查 Ce
 
 > **与 §6 交叉验证方案的对应**：
 > 开放项 2（Ce 缺陷）→ §6.2 矩阵已定案，§6.3 `cross_validate_ff.py` 复核确认；
-> 开放项 1（离子色散）→ §6.3 脚本为二期实施模板；
-> 开放项 3（Cr/Fe）→ 需 §3 中 Sasaki/NIST 工具补值；
+> ~~开放项 1（离子色散）~~ → **已实现（2026-10-16）**：`ion_dispersion.ts` + `dispersion.ts` extended 模式；
+> ~~开放项 3（Cr/Fe）~~ → **已实现（2026-10-16）**：`henke_dispersion.ts`（LBNL Henke f″，f′=0）+ `dispersion.ts` extended 模式；
 > ~~开放项 4（Kα1/Kα2 双线）~~ → 已定案关闭，见 §6.3 `cross_validate_ff.py` 及 `ff-dat-spec.md` §7.5。

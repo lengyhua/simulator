@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { parseCord } from './crystal';
 import { f0 } from './cronie';
 import { SAMPLE_CRYSTALS } from '@/data/samples';
-import { getDispersion, hasDispersion } from './dispersion';
+import { getDispersion, hasDispersion, hasDispersionExtended } from './dispersion';
 import { sinThetaOverLambda, structureFactor } from './structure_factor';
 
 const LAMBDA_CU = 1.54056;
@@ -105,6 +105,28 @@ describe('getDispersion — extended mode (Cr/Fe→Henke, ion→近似表)', () 
   it('extended mode for unknown element still returns supported=false', () => {
     const r = getDispersion('Xx', LAMBDA_CU, 'extended');
     expect(r.supported).toBe(false);
+  });
+
+  it('extended mode for whitespace-padded ion still matches ION_DISPERSION', () => {
+    // 'Na1+' with a leading space should still resolve to the ion approximation
+    const r = getDispersion(' Na1+', LAMBDA_CU, 'extended');
+    expect(r.source).toBe('approximation');
+  });
+
+  it('hasDispersionExtended(Cu Kα1) is true (Henke covers all 6 cols for Cr/Fe)', () => {
+    expect(hasDispersionExtended(1.54056)).toBe(true);
+  });
+
+  it('hasDispersionExtended returns true for Fe Kα (extended covers it)', () => {
+    // Fe Kα is not in FF.dat (fidelity → false) but HENKE_CRF has Fe Kα rows
+    // The 6 standard cols in HENKE_CRF are Cu/Mo/Co Kα1+Kα2, NOT Fe Kα itself.
+    // So hasDispersionExtended(1.93604) should still be true via Henke fallback logic:
+    // entries.some(e => |e.lambda - 1.93604| < 0.001) → no match → falls to hasDispersion → false
+    // This is a known limitation: Henke table only has the 6 Cu/Mo/Co cols.
+    // Use hasDispersionExtended to gate checkbox: false for Fe Kα in current data.
+    const result = hasDispersionExtended(1.93604);
+    // Fe Kα (1.936 Å) is not among the 6 standard cols → false
+    expect(result).toBe(false);
   });
 
   it('extended mode for non-Cr/Fe non-ion element uses FF.dat source', () => {

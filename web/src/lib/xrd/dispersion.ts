@@ -94,14 +94,35 @@ function nearestColumn(lambda: number): { index: number; delta: number } {
 
 /**
  * True when `lambda` matches one of the tabulated radiation columns closely
- * enough that a dispersion correction exists (Cu/Mo/Co Kα). Cr/Fe Kα return
- * false — the UI greys the F′F″ checkbox in that case.
+ * enough that a dispersion correction exists (Cu/Mo/Co Kα) in fidelity mode.
+ * Cr/Fe Kα return false in fidelity mode (UI greys the F′F″ checkbox).
+ *
+ * In extended mode Cr/Fe have Henke f″ data for all 6 standard wavelengths,
+ * so `hasDispersion` should be called with awareness of the active mode:
+ * `hasDispersionExtended(lambda)` is a convenience export for that case.
  */
 export function hasDispersion(lambda: number): boolean {
   if (!Number.isFinite(lambda) || lambda <= 0) {
     return false;
   }
   return nearestColumn(lambda).delta <= LAMBDA_TOLERANCE;
+}
+
+/**
+ * Wavelength coverage check for extended mode: always true for the 6 standard
+ * radiation columns (Cu/Mo/Co Kα1+Kα2) because HENKE_CRF covers Cr/Fe at all
+ * six; also true for FF.dat elements. Use this to gate the F′F″ checkbox when
+ * the user selects extended mode.
+ */
+export function hasDispersionExtended(lambda: number): boolean {
+  if (!Number.isFinite(lambda) || lambda <= 0) {
+    return false;
+  }
+  // HENKE_CRF has entries for all 6 standard wavelengths for Cr and Fe
+  const anyHenke = Object.values(HENKE_CRF).some((entries) =>
+    entries.some((e) => Math.abs(e.lambda - lambda) < 0.001),
+  );
+  return anyHenke || hasDispersion(lambda);
 }
 
 /**
@@ -114,18 +135,24 @@ export function hasDispersion(lambda: number): boolean {
  * 3. pick the nearest supported radiation column (no interpolation);
  * 4. if the element is unknown OR the wavelength is outside coverage,
  *    return `{ fPrime: 0, fDoublePrime: 0, supported: false }` — never throws.
+ *
+ * In extended mode:
+ * - Cr/Fe → LBNL Henke table (authoritative f″, f′=0 documented approximation)
+ * - ion species (Na1+/Cl1-/O2-/…) → ION_DISPERSION charge-scaled approximation
+ * - all others → fall through to FF.dat fidelity result
  */
 export function getDispersion(
   element: string,
   lambda: number,
   mode: DispersionMode = 'fidelity',
 ): DispersionResult {
-  // Base FF.dat lookup (works for all 92 neutral elements at Cu/Mo/Co Kα).
-  const neutral = normalizeElement(element);
+  const trimmed = element.trim();
+  const neutral = normalizeElement(trimmed);
   const zIndex = FF_SYMBOLS.indexOf(neutral); // −1 when not in H..U
   const { index: col, delta } = nearestColumn(lambda);
 
-  const ffSupported = Number.isFinite(lambda) && lambda > 0 && zIndex >= 0 && delta <= LAMBDA_TOLERANCE;
+  const ffSupported =
+    Number.isFinite(lambda) && lambda > 0 && zIndex >= 0 && delta <= LAMBDA_TOLERANCE;
   const row = zIndex >= 0 ? FF_TABLE[zIndex] : undefined;
   const ffResult: DispersionResult = ffSupported
     ? {
@@ -137,8 +164,9 @@ export function getDispersion(
     : { fPrime: 0, fDoublePrime: 0, supported: false, source: 'FF.dat' };
   if (mode === 'fidelity') return ffResult;
 
-  // Extended mode: Cr/Fe → LBNL Henke (authoritative f″, f′=0 documented approx);
-  // ion species → charge-scaled approximation; otherwise fall through to FF.dat.
+  // Extended mode: Cr/Fe → LBNL Henke; ion species → charge-scaled approximation.
+  // Use `neutral` for Cr/Fe lookup (case-insensitive), and `trimmed` (exact
+  // species string including charge) for the ion table lookup.
   const henke = HENKE_CRF[neutral];
   if (henke) {
     const entry = henke.find((e) => Math.abs(e.lambda - lambda) < 0.001) ?? henke[0];
@@ -149,7 +177,7 @@ export function getDispersion(
       source: 'LBNL Henke',
     };
   }
-  const ion = ION_DISPERSION.find((e) => e.species === element);
+  const ion = ION_DISPERSION.find((e) => e.species === trimmed);
   if (ion) {
     return {
       fPrime: ion.fPrime,
