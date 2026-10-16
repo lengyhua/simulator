@@ -145,7 +145,12 @@ export function computeXRDPattern(crystal: Crystal, params: XrdParams): XRDPatte
         }
         seenOrbits.add(key);
 
-        const f = structureFactor(crystal, rep[0], rep[1], rep[2], sfOpts);
+        // Reuse the d already computed above for 2θ to derive s = 1/(2d) and
+        // hand it to structureFactor, avoiding a redundant dSpacing recompute.
+        // d is invariant under Laue rotations + Friedel sign flips, so the s
+        // from the original (h,k,l) equals s of the canonical `rep`.
+        const s = 1 / (2 * d);
+        const f = structureFactor(crystal, rep[0], rep[1], rep[2], { ...sfOpts, s });
         const intensity = reflectionIntensity(twoTheta, f, images.length, {
           useLp: params.useLp,
         });

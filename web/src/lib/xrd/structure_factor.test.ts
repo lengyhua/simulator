@@ -363,3 +363,28 @@ describe('intensity — 峰值强度与归一化', () => {
     expect(params.useAnomalous).toBe(true);
   });
 });
+
+describe('structureFactor — 可选 s 参数（pipeline 复用 d，避免重算 dSpacing）', () => {
+  it('传入预计算的 s 与内部重算得到逐位相同的结果', () => {
+    const cases: Array<[number, number, number]> = [
+      [1, 1, 1], [2, 0, 0], [2, 2, 0], [3, 1, 1], [4, 0, 0],
+    ];
+    for (const [h, k, l] of cases) {
+      const s = sinThetaOverLambda(al, h, k, l);
+      const recomputed = structureFactor(al, h, k, l, sfOpts);
+      const passed = structureFactor(al, h, k, l, { ...sfOpts, s });
+      // s 只依赖 |G|²，与 Laue 轨道代表元无关，故逐位一致。
+      expect(passed.re).toBe(recomputed.re);
+      expect(passed.im).toBe(recomputed.im);
+    }
+  });
+
+  it('带 F′F″ 修正时传入 s 同样逐位一致', () => {
+    const h = 1, k = 1, l = 1;
+    const s = sinThetaOverLambda(nacl, h, k, l);
+    const recomputed = structureFactor(nacl, h, k, l, { ...sfOpts, useDispersion: true });
+    const passed = structureFactor(nacl, h, k, l, { ...sfOpts, useDispersion: true, s });
+    expect(passed.re).toBe(recomputed.re);
+    expect(passed.im).toBe(recomputed.im);
+  });
+});

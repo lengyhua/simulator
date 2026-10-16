@@ -107,8 +107,11 @@ export interface XrdParams {
   usePeakShape: boolean;
   /**
    * F′F″ anomalous-dispersion correction on/off. Checked by default to match
-   * the legacy program's default UI state, but the correction itself is
-   * phase 2 (Factor.dat not decoded) — the engine ignores it for now.
+   * the legacy program's default UI state. When true, the correction is
+   * applied inside {@link structureFactor} via `SFOptions.useDispersion`
+   * (wired in `pipeline.ts`), reading F′/F″ from the FF.dat table
+   * (`ff_data.ts`). Unsupported element/λ pairs (e.g. Cr/Fe Kα) fall back to
+   * a no-op with f′ = f″ = 0.
    */
   useAnomalous: boolean;
   /** Scan range in degrees. */

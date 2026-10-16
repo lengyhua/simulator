@@ -18,15 +18,15 @@
  * and is retracted).
  *
  * Residual deviation of this implementation from the legacy reference is
- * explained by the legacy program's own f₀ table (FF.dat coefficients are
- * embedded in the exe; decoding is out of scope). Measured against the
- * GUI-verified six-peak reference (λ = Cu Kα, Laue mult, IUCr Cronie f₀,
- * q = 0.10 σ):
+ * explained by the legacy program's own f₀ table (Factor.dat, now decoded
+ * into `factor_data.ts`) and dispersion table (FF.dat, now decoded into
+ * `ff_data.ts`). Measured against the GUI-verified six-peak reference
+ * (λ = Cu Kα, Laue mult, Factor.dat f₀ (`factor_data.ts`), q = 0.10 σ):
  *
  * | model                                   | six-peak deviation  |
  * | --------------------------------------- | ------------------- |
- * | standard Lp + IUCr f₀, Thermal off      | +2.9% … +45.4%      |
- * | standard Lp + IUCr f₀, per-atom B = 1   | −0.25% … −2.38%     |
+ * | standard Lp + Factor.dat f₀, Thermal off      | +2.9% … +45.4%      |
+ * | standard Lp + Factor.dat f₀, per-atom B = 1   | −0.25% … −2.38%     |
  *
  * The thermal factor is PER ATOM (the .cord 7th field / the legacy atom
  * table's "B" column, default 1 — GUI-verified 2026-10-16), applied as

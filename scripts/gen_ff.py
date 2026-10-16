@@ -85,6 +85,15 @@ def parse_ff_dat(path: str) -> list[list[float]]:
             )
         values = struct.unpack("<%dd" % NUM_DOUBLES, record[NAME_FIELD_SIZE:RECORD_SIZE])
         matrix.append([round(v, 3) for v in values])
+        if index + 1 == 58:
+            # Known FF.dat entry defect: Ce Cu Kα1 f′ is corrupted. Kept faithful
+            # (project reproduces CalcXRD.exe byte-for-byte); corrected value ≈ −1.88.
+            print(
+                f"[note] Z=58 Ce Cu Kα1 f′ = {values[0]:.3f} — known FF.dat entry defect "
+                f"(correct ≈ −1.88; sibling Cu Kα2 = {values[2]:.3f} is right). "
+                f"Kept faithful; see docs/ff-dat-validation.md.",
+                file=sys.stderr,
+            )
     return matrix
 
 
@@ -105,6 +114,18 @@ def build_ts(matrix: list[list[float]]) -> str:
     lines.append(" * in {@link FF_LAMBDAS}. Values are 3-decimal (the table is hand-recorded")
     lines.append(" * constants, not runtime output). NOTE Z=91 is Pa (FF.dat mislabels it")
     lines.append(" * 'Po'); index by Z via {@link FF_SYMBOLS}, never by the raw symbol.")
+    lines.append(" *")
+    lines.append(" * ⚠ KNOWN LEGACY DATA DEFECT (kept faithful on purpose): Ce (Z=58)")
+    lines.append(" * Cu Kα1 f′ = −1.087 is corrupted in the source FF.dat. Three")
+    lines.append(" * independent lines of evidence (1) the Cu Kα1 f′ Z-trend breaks")
+    lines.append(" * monotonicity — Ba −1.014 → La −1.361 → Ce −1.087(⚠) → Pr −2.403 →")
+    lines.append(" * Nd −3.164; (2) Cu Kα1 (8048 eV) and Kα2 (8028 eV) differ by only 20 eV")
+    lines.append(" * yet their f′ differ by 0.73 (should be ~equal); (3) the sibling Cu Kα2")
+    lines.append(" * entry (−1.818) is consistent with the trend and is correct. Independent")
+    lines.append(" * Cromer–Liberman / IUCr CIF sources give the correct value ≈ −1.88.")
+    lines.append(" * The project reproduces CalcXRD.exe byte-for-byte, so this value is left")
+    lines.append(" * as-is; see docs/ff-dat-validation.md for the corrected value if physical")
+    lines.append(" * accuracy is preferred over fidelity.")
     lines.append(" *")
     lines.append(" * Regenerate with: python scripts/gen_ff.py")
     lines.append(" */")

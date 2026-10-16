@@ -44,6 +44,15 @@ export interface SFOptions {
    * f′=f″=0 (see dispersion.ts), so this is a safe no-op for Cr/Fe Kα.
    */
   useDispersion?: boolean;
+  /**
+   * Optional precomputed scattering vector magnitude s = sinθ/λ (Å⁻¹). When
+   * supplied by a caller that has already evaluated d (e.g. the pipeline,
+   * which computes d for 2θ), the internal `dSpacing` recomputation is skipped.
+   * s depends only on |G| (the squared Miller indices), so it is identical for
+   * a Laue-orbit representative and its original image — passing s from the
+   * original (h,k,l) yields bit-identical results to recomputing it for `rep`.
+   */
+  s?: number;
 }
 
 /** A complex structure factor in Cartesian form. */
@@ -158,7 +167,10 @@ export function structureFactor(
   if (!Number.isFinite(opts.lambda) || opts.lambda <= 0) {
     throw new Error(`波长 λ 应为正有限值，实际为 ${opts.lambda}`);
   }
-  const s = sinThetaOverLambda(crystal, h, k, l);
+  // Reuse a caller-supplied s when present (the pipeline already computed d
+  // for 2θ); otherwise derive s from the cell. Either way the magnitude is
+  // bit-identical because s = sinθ/λ depends only on |G|².
+  const s = opts.s !== undefined ? opts.s : sinThetaOverLambda(crystal, h, k, l);
 
   let re = 0;
   let im = 0;

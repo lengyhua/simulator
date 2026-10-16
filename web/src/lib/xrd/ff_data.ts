@@ -13,6 +13,18 @@
  * constants, not runtime output). NOTE Z=91 is Pa (FF.dat mislabels it
  * 'Po'); index by Z via {@link FF_SYMBOLS}, never by the raw symbol.
  *
+ * ⚠ KNOWN LEGACY DATA DEFECT (kept faithful on purpose): Ce (Z=58)
+ * Cu Kα1 f′ = −1.087 is corrupted in the source FF.dat. Three
+ * independent lines of evidence (1) the Cu Kα1 f′ Z-trend breaks
+ * monotonicity — Ba −1.014 → La −1.361 → Ce −1.087(⚠) → Pr −2.403 →
+ * Nd −3.164; (2) Cu Kα1 (8048 eV) and Kα2 (8028 eV) differ by only 20 eV
+ * yet their f′ differ by 0.73 (should be ~equal); (3) the sibling Cu Kα2
+ * entry (−1.818) is consistent with the trend and is correct. Independent
+ * Cromer–Liberman / IUCr CIF sources give the correct value ≈ −1.88.
+ * The project reproduces CalcXRD.exe byte-for-byte, so this value is left
+ * as-is; see docs/ff-dat-validation.md for the corrected value if physical
+ * accuracy is preferred over fidelity.
+ *
  * Regenerate with: python scripts/gen_ff.py
  */
 
