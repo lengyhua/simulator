@@ -42,13 +42,21 @@ describe('getDispersion — 查表与索引', () => {
     expect(pa.fDoublePrime).not.toBeCloseTo(po.fDoublePrime, 1);
   });
 
-  it('无对应波长的靶（Cr/Fe Kα）回退为 unsupported，f′=f″=0', () => {
-    expect(getDispersion('Al', LAMBDA_CR)).toEqual({ fPrime: 0, fDoublePrime: 0, supported: false });
-    expect(getDispersion('Fe', LAMBDA_FE)).toEqual({ fPrime: 0, fDoublePrime: 0, supported: false });
+  it('无对应波长的靶（Cr/Fe Kα）回退为 unsupported，f′=f″=0（fidelity 模式）', () => {
+    // 注意：fidelity 模式（默认）下 Cr/Fe 无 FF.dat 数据 → unsupported。
+    // extended 模式才会从 HENKE_CRF 取值（见下方 "extended mode" 用例）。
+    expect(getDispersion('Al', LAMBDA_CR, 'fidelity')).toEqual(
+      { fPrime: 0, fDoublePrime: 0, supported: false, source: 'FF.dat' },
+    );
+    expect(getDispersion('Fe', LAMBDA_FE, 'fidelity')).toEqual(
+      { fPrime: 0, fDoublePrime: 0, supported: false, source: 'FF.dat' },
+    );
   });
 
   it('未知元素回退为 unsupported，不抛错', () => {
-    expect(getDispersion('Xx', LAMBDA_CU)).toEqual({ fPrime: 0, fDoublePrime: 0, supported: false });
+    expect(getDispersion('Xx', LAMBDA_CU)).toEqual(
+      { fPrime: 0, fDoublePrime: 0, supported: false, source: 'FF.dat' },
+    );
     expect(getDispersion('Uuo', LAMBDA_CU).supported).toBe(false);
   });
 });
@@ -65,6 +73,45 @@ describe('hasDispersion — 波长覆盖判定', () => {
     expect(hasDispersion(0)).toBe(false);
     expect(hasDispersion(Number.NaN)).toBe(false);
     expect(hasDispersion(-1)).toBe(false);
+  });
+});
+
+describe('getDispersion — extended mode (Cr/Fe→Henke, ion→近似表)', () => {
+  it('fidelity mode (default) returns source=FF.dat for supported element', () => {
+    const r = getDispersion('Al', LAMBDA_CU, 'fidelity');
+    expect(r.supported).toBe(true);
+    expect(r.source).toBe('FF.dat');
+  });
+
+  it('extended mode returns source=LBNL Henke for Cr', () => {
+    // 1.54056 Å = Cu Ka1; for Cr we pass lambda matching a Henke column
+    const r = getDispersion('Cr', LAMBDA_CU, 'extended');
+    expect(r.supported).toBe(true);
+    expect(r.source).toBe('LBNL Henke');
+    expect(r.fPrime).toBe(0);
+  });
+
+  it('extended mode returns source=approximation for Na1+', () => {
+    const r = getDispersion('Na1+', LAMBDA_CU, 'extended');
+    expect(r.supported).toBe(true);
+    expect(r.source).toBe('approximation');
+  });
+
+  it('fidelity mode for Na1+ falls back to neutral FF.dat (no ion entry)', () => {
+    const r = getDispersion('Na1+', LAMBDA_CU, 'fidelity');
+    expect(r.source).toBe('FF.dat');
+  });
+
+  it('extended mode for unknown element still returns supported=false', () => {
+    const r = getDispersion('Xx', LAMBDA_CU, 'extended');
+    expect(r.supported).toBe(false);
+  });
+
+  it('extended mode for non-Cr/Fe non-ion element uses FF.dat source', () => {
+    // Al is not in HENKE_CRF and not in ION_DISPERSION, so extended falls through to FF.dat
+    const r = getDispersion('Al', LAMBDA_CU, 'extended');
+    expect(r.source).toBe('FF.dat');
+    expect(r.supported).toBe(true);
   });
 });
 

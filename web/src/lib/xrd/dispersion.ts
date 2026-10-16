@@ -36,12 +36,24 @@
 
 import { normalizeElement } from './cronie';
 import { FF_COLUMNS, FF_LAMBDAS, FF_SYMBOLS, FF_TABLE } from './ff_data';
+import { HENKE_CRF } from './henke_dispersion';
+import { ION_DISPERSION } from './ion_dispersion';
+
+/**
+ * Dispersion lookup mode:
+ * - 'fidelity' (default): use FF.dat only; Cr/Fe Kα unsupported; ions fall back
+ *   to neutral FF.dat values. This is byte-for-byte faithful to the legacy GUI.
+ * - 'extended': Cr/Fe use the LBNL Henke f″ extension table (f′=0 approximation);
+ *   ion species use the charge-scaled F′/F″ approximation table. Deviates from
+ *   legacy fidelity (documented in docs/ion-and-cr-fe-data-research.md §3).
+ */
+export type DispersionMode = 'fidelity' | 'extended';
 
 /**
  * Wavelength tolerance (Å) for treating a requested λ as "close enough" to one
  * of the tabulated radiation columns. The three supported targets (Cu/Mo/Co
  * Kα1) land EXACTLY on a column (Δλ = 0). Cr Kα (Δλ ≈ 0.50) and Fe Kα
- * (Δλ ≈ 0.14) exceed this and are reported as unsupported.
+ * (Δλ ≈ 0.14) exceed this and are reported as unsupported in fidelity mode.
  */
 const LAMBDA_TOLERANCE = 0.05;
 
@@ -57,6 +69,12 @@ export interface DispersionResult {
    * (e.g. grey out the F′F″ checkbox for Cr/Fe Kα).
    */
   supported: boolean;
+  /**
+   * Data source of the returned values. 'FF.dat' (fidelity), 'LBNL Henke'
+   * (extended Cr/Fe), 'approximation' (extended ion charge-scaling). Callers
+   * may use this to label results or gate UI; it is informational only.
+   */
+  source: string;
 }
 
 /** Returns the wavelength (Å) of the supported column closest to `lambda`. */
@@ -97,26 +115,50 @@ export function hasDispersion(lambda: number): boolean {
  * 4. if the element is unknown OR the wavelength is outside coverage,
  *    return `{ fPrime: 0, fDoublePrime: 0, supported: false }` — never throws.
  */
-export function getDispersion(element: string, lambda: number): DispersionResult {
-  const unsupported: DispersionResult = { fPrime: 0, fDoublePrime: 0, supported: false };
-  if (!Number.isFinite(lambda) || lambda <= 0) {
-    return unsupported;
-  }
+export function getDispersion(
+  element: string,
+  lambda: number,
+  mode: DispersionMode = 'fidelity',
+): DispersionResult {
+  // Base FF.dat lookup (works for all 92 neutral elements at Cu/Mo/Co Kα).
   const neutral = normalizeElement(element);
   const zIndex = FF_SYMBOLS.indexOf(neutral); // −1 when not in H..U
-  if (zIndex < 0) {
-    return unsupported;
-  }
   const { index: col, delta } = nearestColumn(lambda);
-  if (delta > LAMBDA_TOLERANCE) {
-    return unsupported;
+
+  const ffSupported = Number.isFinite(lambda) && lambda > 0 && zIndex >= 0 && delta <= LAMBDA_TOLERANCE;
+  const row = zIndex >= 0 ? FF_TABLE[zIndex] : undefined;
+  const ffResult: DispersionResult = ffSupported
+    ? {
+        fPrime: row![2 * col],
+        fDoublePrime: row![2 * col + 1],
+        supported: true,
+        source: 'FF.dat',
+      }
+    : { fPrime: 0, fDoublePrime: 0, supported: false, source: 'FF.dat' };
+  if (mode === 'fidelity') return ffResult;
+
+  // Extended mode: Cr/Fe → LBNL Henke (authoritative f″, f′=0 documented approx);
+  // ion species → charge-scaled approximation; otherwise fall through to FF.dat.
+  const henke = HENKE_CRF[neutral];
+  if (henke) {
+    const entry = henke.find((e) => Math.abs(e.lambda - lambda) < 0.001) ?? henke[0];
+    return {
+      fPrime: entry.fPrime,
+      fDoublePrime: entry.fDoublePrime,
+      supported: true,
+      source: 'LBNL Henke',
+    };
   }
-  const row = FF_TABLE[zIndex];
-  return {
-    fPrime: row[2 * col],
-    fDoublePrime: row[2 * col + 1],
-    supported: true,
-  };
+  const ion = ION_DISPERSION.find((e) => e.species === element);
+  if (ion) {
+    return {
+      fPrime: ion.fPrime,
+      fDoublePrime: ion.fDoublePrime,
+      supported: true,
+      source: 'approximation',
+    };
+  }
+  return ffResult;
 }
 
 /** Column labels in the same order as the 12 doubles per FF_TABLE row. */
