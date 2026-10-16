@@ -1,9 +1,9 @@
 # CalcXRD Web 模块实现计划（架构设计 + 任务分解）
 
-> 日期: 2026-10-16
-> 作者: 架构师 高见远
-> 上游输入: `docs/superpowers/specs/2026-10-16-calcxrd-web-design.md`（设计 spec）、`CLAUDE.md`（逆向成果）
-> 状态: 待评审
+> 日期: 2026-10-16  
+> 作者: 架构师 高见远  
+> 上游输入: `docs/superpowers/specs/2026-10-16-calcxrd-web-design.md`（设计 spec）、`CLAUDE.md`（逆向成果）  
+> 状态: 待评审  
 > 关联: `D:\Projects\CalcXRD`（本项目，逆向成果 + 数据文件）、`D:\Projects\simulator`（只读参考 + 远期集成目标）
 
 ---
@@ -20,12 +20,12 @@
 
 **边界约定：**
 
-| 方向 | 规则 |
-| --- | --- |
-| web/ → simulator/ | 只读拷贝参考文件（见 1.3）；运行期**不依赖** simulator 任何路径 |
-| simulator/ → web/ | 本期无任何写入；远期集成时 simulator.go 加路由 + htmlbind 打包 `web/dist/` |
+| 方向                 | 规则                                                            |
+| ------------------ | ------------------------------------------------------------- |
+| web/ → simulator/  | 只读拷贝参考文件（见 1.3）；运行期**不依赖** simulator 任何路径                     |
+| simulator/ → web/  | 本期无任何写入；远期集成时 simulator.go 加路由 + htmlbind 打包 `web/dist/`      |
 | web/ → CalcXRD 仓库根 | 只读引用数据文件（`../Wyckoff`、`../WholeSG`、`../samples/`）用于一次性转换与测试夹具 |
-| 与原 CalcXRD.exe | 无运行期关系；仅复刻其数据格式（.cord/.xrd）与计算口径 |
+| 与原 CalcXRD.exe     | 无运行期关系；仅复刻其数据格式（.cord/.xrd）与计算口径                              |
 
 **集成就绪不变式（本期 build 产物必须满足，供将来原样嵌入 simulator）：**
 
@@ -86,7 +86,7 @@ D:\Projects\CalcXRD\web\
 │   ├── lib\
 │   │   ├── math.ts                     # clamp / deg↔rad / 数值工具
 │   │   └── xrd\
-│   │       ├── index.ts                # 模块出口（对 UI 层暴露统一 API）── 2026-10-16 定案不创建，按模块导入
+│   │       ├── index.ts                # 模块出口（对 UI 层暴露统一 API）
 │   │       ├── types.ts                # 共享类型（Crystal/Atom/HKLReflection/XRDPattern/XrdParams…）
 │   │       ├── constants.ts            # 物理与默认值常量（λ 表、q 默认、扫描范围、K=1）
 │   │       ├── crystal.ts              # .cord 解析/序列化（解析器）
@@ -98,7 +98,7 @@ D:\Projects\CalcXRD\web\
 │   │       ├── wyckoff.test.ts
 │   │       ├── structure_factor.ts     # F_hkl = Σ fⱼ·exp(2πi(hx+ky+lz))（含占位、热因子、消光自然涌现）
 │   │       ├── structure_factor.test.ts
-│   │       ├── lorentz.ts              # Lp = (1+cos²2θ)/(sin²θ·cosθ)
+│   │       ├── lorentz.ts              # Lp = (1+cos²2θ)/(sin²θ·sinθ)
 │   │       ├── intensity.ts            # I = K·Lp·|F|²·mult 与峰值归并
 │   │       ├── gaussian.ts             # 高斯展宽：I(2θ) = Σ I_hkl·G(2θ−2θ_hkl; q)
 │   │       ├── pipeline.ts             # 计算管线编排（输入 Crystal+params → XRDPattern）
@@ -131,26 +131,26 @@ D:\Projects\CalcXRD\web\
 
 > simulator 为只读参考；下表为「拷贝到新项目」的白名单，拷贝后按需微调（微调点已注明），**不得反向修改 simulator**。
 
-| # | 源（simulator，只读） | 目标（web/） | 处理方式 |
-| --- | --- | --- | --- |
-| 1 | `static/simulator/xrd_simulator/css/reset.css` | `src/styles/reset.css` | 逐字拷贝 |
-| 2 | `static/simulator/xrd_simulator/css/fonts.css` | `src/styles/fonts.css` | 逐字拷贝（保留 `url(../fonts/...)` 相对路径，woff2 落到 `src/fonts/` 后自然解析） |
-| 3 | `static/simulator/xrd_simulator/fonts/`（6 个 woff2） | `src/fonts/` | 整目录拷贝 |
-| 4 | `static/simulator/xrd_simulator/css/XRD_simulator.css` 第 1–217 行（Token System + Platform Shell 段） | `src/styles/shell.css` + `src/styles/tokens.css` | **摘译**：保留 `:root` 令牌、`html/body` 基础、`.platform-header`/`.platform-title-row`/`.logo`/`.platform-name`/`.tab-bar`/`.tab`/`.tab.active`/`.tab:disabled`；舍弃 `#simulator-base`、`#top-instructions` 等仪器专有段（或改为可选类）；新增输入区专用修正（见下） |
-| 5 | `static/home/css/home.css` | `src/styles/home.css` | 逐字拷贝（自包含，`--font-sans` 等变量在其自身 `:root` 定义） |
-| 6 | `static/home/img/module-instrument.png` | `src/assets/img/module-instrument.png` | 拷贝，ESM import 打包（避免 `public/` 运行时依赖） |
-| 7 | `static/home/img/module-pattern.png` | `src/assets/img/module-pattern.png` | 同上 |
-| 8 | `static/home/img/module-lattice.png` | `src/assets/img/module-lattice.png` | 同上 |
-| 9 | `static/home/index.html`（结构参考，非文件拷贝） | `src/pages/HomePage.tsx` | 复刻为 React 组件：`.home-page` > `header.home-header` + `main.module-grid` 三卡 + `footer.home-footer`；卡片二由 `<div>即将上线` 改为 `<Link to="/module">`（DEV 路由）；卡片一保留 `<a href="/static/simulator/xrd_simulator/XRD_simulator.html">`（嵌入后有效；standalone dev 下点击会 404，属预期，见 §8） |
-| 10 | `static/simulator/xrd_simulator/XRD_simulator.html` 第 20–38 行（页面外壳参考） | `src/components/shell/PlatformHeader.tsx` | 复刻为组件：`#top-bar`（display:none 保留）+ `header.platform-header` > `.platform-title-row`（logo「X」+ 标题链接）+ `nav.tab-bar` 单 active tab「XRD理论数据仿真」；指令 pill 作为可选 prop |
+| #  | 源（simulator，只读）                                                                                   | 目标（web/）                                         | 处理方式                                                                                                                                                                                                                                                            |
+| -- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1  | `static/simulator/xrd_simulator/css/reset.css`                                                    | `src/styles/reset.css`                           | 逐字拷贝                                                                                                                                                                                                                                                            |
+| 2  | `static/simulator/xrd_simulator/css/fonts.css`                                                    | `src/styles/fonts.css`                           | 逐字拷贝（保留 `url(../fonts/...)` 相对路径，woff2 落到 `src/fonts/` 后自然解析）                                                                                                                                                                                                   |
+| 3  | `static/simulator/xrd_simulator/fonts/`（6 个 woff2）                                                | `src/fonts/`                                     | 整目录拷贝                                                                                                                                                                                                                                                           |
+| 4  | `static/simulator/xrd_simulator/css/XRD_simulator.css` 第 1–217 行（Token System + Platform Shell 段） | `src/styles/shell.css` + `src/styles/tokens.css` | **摘译**：保留 `:root` 令牌、`html/body` 基础、`.platform-header`/`.platform-title-row`/`.logo`/`.platform-name`/`.tab-bar`/`.tab`/`.tab.active`/`.tab:disabled`；舍弃 `#simulator-base`、`#top-instructions` 等仪器专有段（或改为可选类）；新增输入区专用修正（见下）                                     |
+| 5  | `static/home/css/home.css`                                                                        | `src/styles/home.css`                            | 逐字拷贝（自包含，`--font-sans` 等变量在其自身 `:root` 定义）                                                                                                                                                                                                                      |
+| 6  | `static/home/img/module-instrument.png`                                                           | `src/assets/img/module-instrument.png`           | 拷贝，ESM import 打包（避免 `public/` 运行时依赖）                                                                                                                                                                                                                            |
+| 7  | `static/home/img/module-pattern.png`                                                              | `src/assets/img/module-pattern.png`              | 同上                                                                                                                                                                                                                                                              |
+| 8  | `static/home/img/module-lattice.png`                                                              | `src/assets/img/module-lattice.png`              | 同上                                                                                                                                                                                                                                                              |
+| 9  | `static/home/index.html`（结构参考，非文件拷贝）                                                              | `src/pages/HomePage.tsx`                         | 复刻为 React 组件：`.home-page` > `header.home-header` + `main.module-grid` 三卡 + `footer.home-footer`；卡片二由 `<div>即将上线` 改为 `<Link to="/module">`（DEV 路由）；卡片一保留 `<a href="/static/simulator/xrd_simulator/XRD_simulator.html">`（嵌入后有效；standalone dev 下点击会 404，属预期，见 §8） |
+| 10 | `static/simulator/xrd_simulator/XRD_simulator.html` 第 20–38 行（页面外壳参考）                             | `src/components/shell/PlatformHeader.tsx`        | 复刻为组件：`#top-bar`（display:none 保留）+ `header.platform-header` > `.platform-title-row`（logo「X」+ 标题链接）+ `nav.tab-bar` 单 active tab「XRD理论数据仿真」；指令 pill 作为可选 prop                                                                                                     |
 
 从 CalcXRD 仓库根拷贝（非 simulator）：
 
-| # | 源 | 目标 | 用途 |
-| --- | --- | --- | --- |
-| 11 | `samples/{Al,NaCl,BaTiO3,Po}.cord` | `src/data/samples/` | 预置样品，`?raw` 打包 |
-| 12 | `samples/Al.xrd` | `tests/fixtures/Al.xrd` | pipeline 验收基准 |
-| 13 | `Wyckoff`、`WholeSG` | 不拷贝，由 `scripts/gen_wyckoff.py` 读取后生成 `src/lib/xrd/wyckoff_data.ts` | 生成物入库，避免运行期文件依赖 |
+| #  | 源                                  | 目标                                                                 | 用途              |
+| -- | ---------------------------------- | ------------------------------------------------------------------ | --------------- |
+| 11 | `samples/{Al,NaCl,BaTiO3,Po}.cord` | `src/data/samples/`                                                | 预置样品，`?raw` 打包  |
+| 12 | `samples/Al.xrd`                   | `tests/fixtures/Al.xrd`                                            | pipeline 验收基准   |
+| 13 | `Wyckoff`、`WholeSG`                | 不拷贝，由 `scripts/gen_wyckoff.py` 读取后生成 `src/lib/xrd/wyckoff_data.ts` | 生成物入库，避免运行期文件依赖 |
 
 **shell.css 相对原 CSS 的必要修正（摘译而非逐字）：**
 
@@ -188,12 +188,13 @@ go-bindata 打包命令追加 `web/dist/...`。因为所有资源都在 `/calc-x
 
 ### 1.5 路由与链接策略
 
-| 环境 | URL | 渲染 | 标题链接行为 |
-| --- | --- | --- | --- |
-| DEV | `/calc-xrd/` | `HomePage`（复刻首页） | `<Link to="/">`（SPA 内导航 → `/calc-xrd/`） |
-| DEV | `/calc-xrd/module` | `CalcXrdPage`（模块页） | 同上 |
-| PROD | `/calc-xrd/` | `CalcXrdPage`（直接进模块，平台首页卡片二将来链到此处） | `<a href="/">`（整页导航到平台主页） |
-| PROD | 其他 `/calc-xrd/*` | 重定向 `/calc-xrd/` | — |
+| 环境   | URL                | 渲染                                 | 标题链接行为                                  |
+| ---- | ------------------ | ---------------------------------- | --------------------------------------- |
+| DEV  | `/calc-xrd/`       | `HomePage`（复刻首页）                   | `<Link to="/">`（SPA 内导航 → `/calc-xrd/`） |
+| DEV  | `/calc-xrd/module` | `CalcXrdPage`（模块页）                 | 同上                                      |
+| PROD | `/calc-xrd/`       | `CalcXrdPage`（直接进模块，平台首页卡片二将来链到此处） | `<a href="/">`（整页导航到平台主页）               |
+| PROD | 其他 `/calc-xrd/*`   | 重定向 `/calc-xrd/`                   | —                                       |
+
 
 实现要点（全部收敛在 `src/config.ts` + `src/routes.tsx`，业务组件不感知环境）：
 
@@ -212,20 +213,20 @@ export const MODULE_PATH = IS_DEV ? '/module' : '/';            // 模块路由
 
 ### 1.6 与原 CalcXRD.exe 的控件对应
 
-| 原程序控件（TFormCalc） | Web 组件 | 本期范围 |
-| --- | --- | --- |
-| `open`（打开 .cord） | `CrystalInput` 文件上传（`<input type=file>` + FileReader） | ✅ |
-| `input`（手工输入） | `CrystalInput` + `AtomTable` 表单 | ✅ |
-| `powder XRD` | 「计算粉末 XRD」按钮 | ✅ |
-| `single XRD` | — | ⛔ 二期（TFormSingle，见 §8） |
-| `Wyckoff symbol` 查询 | — | ⛔ 二期（wyckoff.ts 已预留 getSite） |
-| `factors`（散射线查询） | — | ⛔ 二期（FF.dat 解码后） |
-| `Lamda` 下拉 | `SettingsPanel` λ 下拉 | ✅ |
-| `q` 输入 | `SettingsPanel` q 输入 | ✅ |
-| 复选框×4 | `SettingsPanel`：Lp / Thermal / PeakShape 可用；F′F″ 禁用（Factor.dat 未解码，tooltip「二期」） | 部分 |
-| 结果曲线 | `XRDChart`（Recharts） | ✅ |
-| 结果表格 | `HKLTable` | ✅ |
-| 保存 .xrd | `XRDChart`「导出 .xrd」 | ✅ |
+| 原程序控件（TFormCalc）    | Web 组件                                                                          | 本期范围                         |
+| ------------------- | ------------------------------------------------------------------------------- | ---------------------------- |
+| `open`（打开 .cord）    | `CrystalInput` 文件上传（`<input type=file>` + FileReader）                           | ✅                            |
+| `input`（手工输入）       | `CrystalInput` + `AtomTable` 表单                                                 | ✅                            |
+| `powder XRD`        | 「计算粉末 XRD」按钮                                                                    | ✅                            |
+| `single XRD`        | —                                                                               | ⛔ 二期（TFormSingle，见 §8）       |
+| `Wyckoff symbol` 查询 | —                                                                               | ⛔ 二期（wyckoff.ts 已预留 getSite） |
+| `factors`（散射线查询）    | —                                                                               | ⛔ 二期（FF.dat 解码后）             |
+| `Lamda` 下拉          | `SettingsPanel` λ 下拉                                                            | ✅                            |
+| `q` 输入              | `SettingsPanel` q 输入                                                            | ✅                            |
+| 复选框×4               | `SettingsPanel`：Lp / Thermal / PeakShape / F′F″ 均可用（F′F″ 默认勾选，与 CalcXRD 一致；Cr/Fe Kα 因 FF.dat 无数据自动置灰） | ✅                            |
+| 结果曲线                | `XRDChart`（Recharts）                                                            | ✅                            |
+| 结果表格                | `HKLTable`                                                                      | ✅                            |
+| 保存 .xrd             | `XRDChart`「导出 .xrd」                                                             | ✅                            |
 
 ---
 
@@ -235,82 +236,82 @@ export const MODULE_PATH = IS_DEV ? '/module' : '/';            // 模块路由
 
 ### 配置与入口
 
-| 文件 | 职责 |
-| --- | --- |
-| `index.html` | Vite SPA 入口：zh-CN、title「XRD模拟仿真辅助分析平台」、`<div id="root">`、`/src/main.tsx` |
-| `package.json` | 依赖与脚本声明（dev/build/preview/test，见 §6） |
-| `vite.config.ts` | `base:'/calc-xrd/'`、react 插件、`@`→`src` 别名、build.outDir=dist、vitest 段（node 环境） |
-| `tsconfig.json` | strict + `jsx: react-jsx` + `moduleResolution: bundler` + `paths: {@/*}` + `types: [vite/client]` |
-| `tsconfig.node.json` | vite.config.ts 的 node 侧配置 |
-| `.gitignore` | `node_modules/`、`dist/`、`*.local` |
-| `README.md` | 快速开始、目录说明、集成就绪契约、远期 simulator 集成步骤草稿 |
-| `scripts/gen_wyckoff.py` ◆ | 一次性生成脚本：解析 `../Wyckoff`/`../WholeSG` → `src/lib/xrd/wyckoff_data.ts`（stdlib only） |
+| 文件                         | 职责                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------- |
+| `index.html`               | Vite SPA 入口：zh-CN、title「XRD模拟仿真辅助分析平台」、`<div id="root">`、`/src/main.tsx`                          |
+| `package.json`             | 依赖与脚本声明（dev/build/preview/test，见 §6）                                                              |
+| `vite.config.ts`           | `base:'/calc-xrd/'`、react 插件、`@`→`src` 别名、build.outDir=dist、vitest 段（node 环境）                     |
+| `tsconfig.json`            | strict + `jsx: react-jsx` + `moduleResolution: bundler` + `paths: {@/*}` + `types: [vite/client]` |
+| `tsconfig.node.json`       | vite.config.ts 的 node 侧配置                                                                         |
+| `.gitignore`               | `node_modules/`、`dist/`、`*.local`                                                                 |
+| `README.md`                | 快速开始、目录说明、集成就绪契约、远期 simulator 集成步骤草稿                                                              |
+| `scripts/gen_wyckoff.py` ◆ | 一次性生成脚本：解析 `../Wyckoff`/`../WholeSG` → `src/lib/xrd/wyckoff_data.ts`（stdlib only）                 |
 
 ### 应用骨架
 
-| 文件 | 职责 |
-| --- | --- |
-| `src/main.tsx` | 挂载 React、导入全局样式（reset/fonts/tokens/shell/home/app）、挂 Router |
-| `src/App.tsx` | 布局骨架：`PlatformHeader` + 主内容区（`<Outlet>`/路由视图） |
-| `src/routes.tsx` | 条件路由表（DEV 首页+模块 / PROD 仅模块）与懒加载 |
-| `src/config.ts` | 环境派生常量（BASE_URL/HOME_HREF/MODULE_PATH/IS_DEV），路由与链接唯一来源 |
-| `src/vite-env.d.ts` | vite/client 类型引用（`?raw`、`import.meta.env` 类型） |
-| `src/pages/HomePage.tsx` | 复刻首页三卡片；卡片二 Link 到模块；DEV-only lazy |
+| 文件                          | 职责                                                                                      |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| `src/main.tsx`              | 挂载 React、导入全局样式（reset/fonts/tokens/shell/home/app）、挂 Router                             |
+| `src/App.tsx`               | 布局骨架：`PlatformHeader` + 主内容区（`<Outlet>`/路由视图）                                           |
+| `src/routes.tsx`            | 条件路由表（DEV 首页+模块 / PROD 仅模块）与懒加载                                                         |
+| `src/config.ts`             | 环境派生常量（BASE_URL/HOME_HREF/MODULE_PATH/IS_DEV），路由与链接唯一来源                                 |
+| `src/vite-env.d.ts`         | vite/client 类型引用（`?raw`、`import.meta.env` 类型）                                           |
+| `src/pages/HomePage.tsx`    | 复刻首页三卡片；卡片二 Link 到模块；DEV-only lazy                                                      |
 | `src/pages/CalcXrdPage.tsx` | 模块主页：header + SamplePicker + CrystalInput/AtomTable + SettingsPanel + XRDChart/HKLTable |
 
 ### 外壳与样式
 
-| 文件 | 职责 |
-| --- | --- |
-| `src/components/shell/PlatformHeader.tsx` | logo「X」+ 标题链接（DEV `<Link>`/PROD `<a href="/">`）+ 单 active tab + 可选指令 pill |
-| `src/components/shell/PlatformTab.tsx` | tab 按钮（active/disabled 态） |
-| `src/styles/tokens.css` ◆ | 暗色设计令牌（自 XRD_simulator.css `:root`：--surface-2/--border/--accent/--text/--text-dim/--text-faint/--surface 等） |
-| `src/styles/reset.css` ◆ | 浏览器重置（simulator 逐字拷贝） |
-| `src/styles/fonts.css` ◆ | Inter/JetBrains Mono @font-face（simulator 逐字拷贝） |
-| `src/fonts/*.woff2` ◆ | 6 个字体子集（simulator 整目录拷贝） |
-| `src/styles/shell.css` | platform 外壳类 + 输入区 user-select/滚动修正（XRD_simulator.css 摘译） |
-| `src/styles/home.css` ◆ | 复刻首页样式（simulator home.css 逐字拷贝） |
-| `src/styles/app.css` | 模块主体样式：参数区网格、曲线卡片、表格、按钮（复用 tokens 变量，不引入组件库） |
+| 文件                                        | 职责                                                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `src/components/shell/PlatformHeader.tsx` | logo「X」+ 标题链接（DEV `<Link>`/PROD `<a href="/">`）+ 单 active tab + 可选指令 pill                                    |
+| `src/components/shell/PlatformTab.tsx`    | tab 按钮（active/disabled 态）                                                                                    |
+| `src/styles/tokens.css` ◆                 | 暗色设计令牌（自 XRD_simulator.css `:root`：--surface-2/--border/--accent/--text/--text-dim/--text-faint/--surface 等） |
+| `src/styles/reset.css` ◆                  | 浏览器重置（simulator 逐字拷贝）                                                                                        |
+| `src/styles/fonts.css` ◆                  | Inter/JetBrains Mono @font-face（simulator 逐字拷贝）                                                              |
+| `src/fonts/*.woff2` ◆                     | 6 个字体子集（simulator 整目录拷贝）                                                                                     |
+| `src/styles/shell.css`                    | platform 外壳类 + 输入区 user-select/滚动修正（XRD_simulator.css 摘译）                                                    |
+| `src/styles/home.css` ◆                   | 复刻首页样式（simulator home.css 逐字拷贝）                                                                              |
+| `src/styles/app.css`                      | 模块主体样式：参数区网格、曲线卡片、表格、按钮（复用 tokens 变量，不引入组件库）                                                                 |
 
 ### 业务组件
 
-| 文件 | 职责 |
-| --- | --- |
-| `src/components/SamplePicker.tsx` | 预置样品下拉（Al/NaCl/BaTiO3/Po），选中即加载对应 `.cord` 文本 |
-| `src/components/CrystalInput.tsx` | 晶体参数表单（Name/System/SG 选择/a,b,c/α,β,γ）+ .cord 文件上传 + 「解析并回填」 |
-| `src/components/AtomTable.tsx` | 原子表（Element/Wyckoff/x/y/z/Occ）增删改；元素列带常用元素/离子 datalist |
-| `src/components/SettingsPanel.tsx` | λ 下拉、q 输入、复选框×4、扫描范围（起止/步长） |
-| `src/components/XRDChart.tsx` ★ | Recharts 折线（2θ–强度，渲染降采样 ≤2000 点）+ 「导出 .xrd」 |
-| `src/components/HKLTable.tsx` | hkl 离散峰表（hkl/d/2θ/I 归一化/mult，列排序） |
+| 文件                                 | 职责                                                          |
+| ---------------------------------- | ----------------------------------------------------------- |
+| `src/components/SamplePicker.tsx`  | 预置样品下拉（Al/NaCl/BaTiO3/Po），选中即加载对应 `.cord` 文本                |
+| `src/components/CrystalInput.tsx`  | 晶体参数表单（Name/System/SG 选择/a,b,c/α,β,γ）+ .cord 文件上传 + 「解析并回填」 |
+| `src/components/AtomTable.tsx`     | 原子表（Element/Wyckoff/x/y/z/Occ）增删改；元素列带常用元素/离子 datalist      |
+| `src/components/SettingsPanel.tsx` | λ 下拉、q 输入、复选框×4、扫描范围（起止/步长）                                 |
+| `src/components/XRDChart.tsx` ★    | Recharts 折线（2θ–强度，渲染降采样 ≤2000 点）+ 「导出 .xrd」                 |
+| `src/components/HKLTable.tsx`      | hkl 离散峰表（hkl/d/2θ/I 归一化/mult，列排序）                           |
 
 ### 计算引擎 `src/lib/xrd/`（纯 TS，无 DOM/副作用）
 
-| 文件 | 职责 |
-| --- | --- |
-| `index.ts`（不创建） | 经 2026-10-16 架构审查定案：不建 barrel 统一出口，「按模块导入」为既定风格（store/测试/UI 均从模块文件直入） |
-| `types.ts` | 共享类型（见 §3.1） |
-| `constants.ts` | λ 表（Cu/Mo/Cr/Co/Fe Kα）、默认 q、扫描范围 3–100°/0.01°、K=1、容差常量 |
-| `crystal.ts` ★ | `.cord` 解析/序列化：逐行字段、Fortran 风格科学计数字（`4.03390000000000E+0000`）、错误带行号 |
-| `cronie.ts` ★ | IUCr Cronie/Waasmaier-Kirfel 系数表（H–U 92 元素 + 常见离子态）+ `f0(element, s)`，`s = sinθ/λ` |
-| `wyckoff.ts` ★ | `getSite` / `expandPositions`（按中心平移展开坐标表达式并代入 x,y,z）/ `multiplicityOf` / Laue 操作导出（供 mult 计算） |
-| `wyckoff_data.ts` ◆ | 254 空间群数据：`{ "225(Fm-3m)": { centers, sites[] } }`（键为 WholeSG 全名，兼容 origin choice 重号） |
-| `structure_factor.ts` ★ | `F_hkl = Σⱼ fⱼ·exp(2πi(hxⱼ+kyⱼ+lzⱼ))`；fⱼ = f₀(s)·occ·exp(−B·s²)；消光由位置展开自然涌现 |
-| `lorentz.ts` | `Lp = (1+cos²2θ)/(sin²θ·cosθ)`（标准式；原程序 help 原文为 `(1+cos²2θ)/(sin2θ·sinθ)`，因 sin2θ=2sinθcosθ，与标准式仅差常数因子 2，被 K/I₀ 吸收，归一化后等价） |
-| `intensity.ts` | `I_hkl = K·Lp·|F|²`（K=1）+ 峰表归并（等效 hkl 合并、mult 计算、归一化到 100） |
-| `gaussian.ts` | 高斯展宽：`I(2θ) = Σ I_hkl·exp(−4ln2·(2θ−2θ_hkl)²/q²)`（q = FWHM，度）；PeakShape 关 = δ 棒谱 |
-| `pipeline.ts` ★ | 管线编排：hkl 枚举（2θ ≤ max）→ d/2θ → F → Lp → I → 展宽 → `XRDPattern` |
-| `xrd_file.ts` ★ | `.xrd` 序列化（兼容原程序 header 五行 + `2θ I` 行）/ 解析（读夹具） |
-| `src/lib/math.ts` | clamp / deg↔rad / ` nearlyEqual` 工具 |
+| 文件                      | 职责                                                                                            |   |                                            |
+| ----------------------- | --------------------------------------------------------------------------------------------- | - | ------------------------------------------ |
+| `index.ts`              | 统一出口：`computeXRDPattern` / `parseCord` / `serializeXrd` 等                                     |   |                                            |
+| `types.ts`              | 共享类型（见 §3.1）                                                                                  |   |                                            |
+| `constants.ts`          | λ 表（Cu/Mo/Cr/Co/Fe Kα）、默认 q、扫描范围 3–100°/0.01°、K=1、容差常量                                        |   |                                            |
+| `crystal.ts` ★          | `.cord` 解析/序列化：逐行字段、Fortran 风格科学计数字（`4.03390000000000E+0000`）、错误带行号                           |   |                                            |
+| `cronie.ts` ★           | IUCr Cronie/Waasmaier-Kirfel 系数表（H–U 92 元素 + 常见离子态）+ `f0(element, s)`，`s = sinθ/λ`            |   |                                            |
+| `wyckoff.ts` ★          | `getSite` / `expandPositions`（按中心平移展开坐标表达式并代入 x,y,z）/ `multiplicityOf` / Laue 操作导出（供 mult 计算） |   |                                            |
+| `wyckoff_data.ts` ◆     | 254 空间群数据：`{ "225(Fm-3m)": { centers, sites[] } }`（键为 WholeSG 全名，兼容 origin choice 重号）         |   |                                            |
+| `structure_factor.ts` ★ | `F_hkl = Σⱼ fⱼ·exp(2πi(hxⱼ+kyⱼ+lzⱼ))`；fⱼ = f₀(s)·occ·exp(−B·s²)；消光由位置展开自然涌现                   |   |                                            |
+| `lorentz.ts`            | `Lp = (1+cos²2θ)/(sin²θ·sinθ)`                                                                |   |                                            |
+| `intensity.ts`          | \`I_hkl = K·Lp·                                                                               | F | ²\`（K=1）+ 峰表归并（等效 hkl 合并、mult 计算、归一化到 100） |
+| `gaussian.ts`           | 高斯展宽：`I(2θ) = Σ I_hkl·exp(−4ln2·(2θ−2θ_hkl)²/q²)`（q = FWHM，度）；PeakShape 关 = δ 棒谱              |   |                                            |
+| `pipeline.ts` ★         | 管线编排：hkl 枚举（2θ ≤ max）→ d/2θ → F → Lp → I → 展宽 → `XRDPattern`                                  |   |                                            |
+| `xrd_file.ts` ★         | `.xrd` 序列化（兼容原程序 header 五行 + `2θ I` 行）/ 解析（读夹具）                                               |   |                                            |
+| `src/lib/math.ts`       | clamp / deg↔rad / ` nearlyEqual` 工具                                                           |   |                                            |
 
 ### 数据与状态
 
-| 文件 | 职责 |
-| --- | --- |
-| `src/data/samples/*.cord` ◆ | 4 个预置样品（仓库 samples/ 拷贝，`?raw` 打包） |
-| `src/data/samples/index.ts` | `SAMPLE_CRYSTALS` 常量数组 |
-| `src/assets/img/*.png` ◆ | 首页三卡插图（simulator home/img 拷贝，ESM 打包） |
+| 文件                             | 职责                                                                                                             |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `src/data/samples/*.cord` ◆    | 4 个预置样品（仓库 samples/ 拷贝，`?raw` 打包）                                                                              |
+| `src/data/samples/index.ts`    | `SAMPLE_CRYSTALS` 常量数组                                                                                         |
+| `src/assets/img/*.png` ◆       | 首页三卡插图（simulator home/img 拷贝，ESM 打包）                                                                           |
 | `src/store/crystal-store.ts` ★ | Zustand store：`crystal / params / pattern / error` + `loadCordText / setCrystal / setParams / compute / reset` |
-| `tests/fixtures/Al.xrd` ◆ | Al 权威参考输出（验收基准，9700 行） |
+| `tests/fixtures/Al.xrd` ◆      | Al 权威参考输出（验收基准，9700 行）                                                                                         |
 
 ---
 
@@ -368,11 +369,11 @@ export interface XRDPattern {
 export interface XrdParams {
   lambda: number;          // Å（默认 1.54056）
   q: number;               // 高斯 FWHM（度，默认见 constants.ts 标定值）
-  thermalB: number;        // 温度因子 B（Å²，默认 0.9，§7 标定）
-  useLp: boolean;          // Lp 因子开关（默认开）
-  useThermal: boolean;     // 热因子开关（默认开；关 = B=0 模型，高角峰系统性偏高，§7）
+  thermalB: number;        // 温度因子 B（Å²，默认 0）
+  useLp: boolean;          // Lp 因子开关
+  useThermal: boolean;     // 热因子开关（B>0 才有效果）
   usePeakShape: boolean;   // true=高斯展宽；false=δ 棒谱
-  // useAnomalous: F′F″ 修正（二期，Factor.dat 解码后启用；一期 UI 禁用）
+  // useAnomalous: F′F″ 修正（已落地：FF.dat 解码 + dispersion.ts，默认开启，Cr/Fe Kα 自动置灰）
   rangeMin: number; rangeMax: number; step: number; // 扫描范围（默认 3/100/0.01）
 }
 
@@ -409,7 +410,7 @@ export function getSite(sgKey: string, letter: string): WyckoffSite | undefined;
 export function expandPositions(sgKey: string, letter: string, x: number, y: number, z: number): Vec3[];
   // Vec3 = [number, number, number]；按 centers × ops 展开、代入坐标、去重（容差 1e-6）
 export function multiplicityOf(sgKey: string, letter: string): number;
-export function laueOperations(sgKey: string): number[][];   // 旋转矩阵列表，每个为扁平 9 元素行主序数组（由 ops 提取，用于 mult 计算；2026-10-16 架构审查确认）
+export function laueOperations(sgKey: string): number[][];   // 3×3 旋转矩阵列表（由 ops 提取，用于 mult 计算）
 
 // structure_factor.ts
 export interface SFOptions { lambda: number; thermalB: number; useThermal: boolean; }
@@ -435,6 +436,7 @@ export function computeXRDPattern(crystal: Crystal, params: XrdParams): XRDPatte
 export function serializeXrd(crystal: Crystal, pattern: XRDPattern): string; // 兼容原程序 header
 export function parseXrd(text: string): { twoTheta: number[]; intensity: number[] };
 ```
+
 
 ### 3.3 状态管理接口（`src/store/crystal-store.ts`，Zustand）
 
@@ -488,7 +490,7 @@ interface CrystalState {
 - `1/d² = (1/V²)[h²b²c²sin²α + k²a²c²sin²β + l²a²b²sin²γ + 2hk·abc²(cosα·cosβ−cosγ) + 2hl·ab²c(cosα·cosγ−cosβ) + 2kl·a²bc(cosβ·cosγ−cosα)]`，`V = abc√(1−cos²α−cos²β−cos²γ+2cosα·cosβ·cosγ)`（该一般三斜形式已用 4885 组随机晶胞数值验证，与倒易基矢直接计算一致到 1e-12；立方情形退化为 d=a/√(h²+k²+l²)）
 - `2θ = 2·arcsin(λ/(2d))`（λ/(2d) > 1 时该 hkl 不出现）
 - `fⱼ = f₀(sinθ/λ)·occⱼ·exp(−B·(sinθ/λ)²)`
-- `Lp = (1+cos²2θ)/(sin²θ·cosθ)`（标准式；原程序 help 原文 `(1+cos²2θ)/(sin2θ·sinθ)`，sin2θ=2sinθcosθ，差常数因子 2 被 K/I₀ 吸收——2026-10-16 核验 RTF 原文，`sin2θ` 曾被误读为 `sin²θ`，已证伪）
+- `Lp = (1+cos²2θ)/(sin²θ·sinθ)`
 - `I_hkl = K·Lp·|F|²`（K=1）
 - 展宽 `I(2θ) = Σ I_hkl·exp(−4ln2·(2θ−2θ_hkl)²/q²)`
 
@@ -539,7 +541,7 @@ interface CrystalState {
 
 - **Source Files**: `src/lib/xrd/cronie.ts`、`src/lib/xrd/cronie.test.ts`
 - **Dependencies**: T01
-- **内容**: IUCr 标准 Cronier/Waasmaier-Kirfel 系数表硬编码（H–U 92 中性元素）+ `f0(element, s)`；离子态（Na1+/Cl1-/O2-/Ba2+/Ti4+ 等）经 `normalizeElement` 归一化到中性元素系数（s=0 精确、s<2 Å⁻¹ 近似好的文档化策略；FF.dat 独立离子系数属二期）
+- **内容**: IUCr 标准 Cronie/Waasmaier-Kirfel 系数表硬编码（H–U 92 元素 + 常见离子态 Na1+/Cl1-/O2-/Ba2+/Ti4+ 等）+ `f0(element, s)`
 - **验收标准**:
   1. 每个中性元素 `f0(el, 0)` 与该元素原子序数 Z 误差 < 0.5（如 Al≈13、Na≈11、Cl≈17）；
   2. 抽查 ≥10 个元素在中 s 值（如 s=0.1/0.3/0.5 Å⁻¹）与 IUCr 官方表数值一致（容差 1e-3）；
@@ -567,10 +569,9 @@ interface CrystalState {
 - **验收标准**:
   1. Fm-3m 消光：Al 的 (100)/(110)/(210)/(211)/(221)/(300) 等混合奇偶 hkl 的 |F| < 1e-6·|F(111)|；
   2. Al (111)：|F| = 4·f₀(s)（4 个面心同位相），数值手算复核一致；
-  3. 热因子：f = f₀·exp(−B·s²) 仅当 useThermal 且 B>0 时生效；Al 六峰在 B=0.9 下全谱强度偏差 ≤2%（标定见 §7）；
-  4. NaCl (020)/(220)：实测 ≈1.4–1.6（B=0.9），截图基准 3.25 与 Laue mult 数学不兼容（分析见 §8-4），断言实测值并注释；
-  5. mult 抽查：立方 (100)=6、(110)=12、(111)=8、(220)=12、(311)=24、(400)=6；
-  6. Lp(2θ=0)→ 有界（θ→0 时按数值下限处理不发散），Lp(45°) 与手算一致。
+  3. NaCl 回归：复现 spike 口径，(020)/(220) 强度比 ≈ 3.25（spike 已验证基准，容差 ±0.15）；
+  4. mult 抽查：立方 (100)=6、(110)=12、(111)=8、(220)=12、(311)=24、(400)=6；
+  5. Lp(2θ=0)→ 有界（θ→0 时按数值下限处理不发散），Lp(45°) 与手算一致。
 
 ### T07 高斯展宽 + 管线编排 + Al.xrd 验收【P0】
 
@@ -579,7 +580,7 @@ interface CrystalState {
 - **内容**: 管线编排（hkl 枚举→d/2θ→F→Lp→I→归并→归一化→展宽）+ `.xrd` 序列化/解析 + **对照 Al.xrd 的验收测试**
 - **验收标准**（对照 `tests/fixtures/Al.xrd`，λ=1.54056、a=4.0339、q 取标定默认值）:
   1. 六个峰 2θ 误差 **< 0.01°**（理论值见 §9 附录，预期 ≤0.005°）；
-  2. 各峰相对强度偏差 **< 10%**（默认参数 Thermal 开、B=0.9；实测预期 ≤2%，标定见 §7。若 B=0 高角峰系统性偏高至 +45%，属预期——原程序参考谱含默认热因子）；
+  2. 各峰相对强度偏差 **< 10%**（基准见 §9；spike 常数 f₀ 模型平均偏差 2.9%，角度相关 f₀ 应更优）；
   3. 无虚假峰：除 6 个 FCC 允许峰外谱面无 >1% 的峰；
   4. `serializeXrd` 输出 header 与原程序五行格式一致（Name/Lamda/范围/Data Number/Full Scall + `2θ I` 行），行数 = (max−min)/step + 1；
   5. `parseXrd(serializeXrd(...))` round-trip 通过。
@@ -588,7 +589,7 @@ interface CrystalState {
 
 - **Source Files**: `src/store/crystal-store.ts`、`src/store/crystal-store.test.ts`
 - **Dependencies**: T03, T07
-- **内容**: store 实现（crystal/params/pattern/error + 全部 action），默认参数（λ=1.54056、q=0.25、3–100°/0.01°、Lp 开、PeakShape 开、**Thermal 开 B=0.9**、F′F″ 禁用）
+- **内容**: store 实现（crystal/params/pattern/error + 全部 action），默认参数（λ=1.54056、q=0.10 σ、3–100°/0.01°、Lp 开、PeakShape 开、Thermal 开（逐原子 B=1）、F′F″ 开（默认勾选，与 CalcXRD 一致））
 - **验收标准**:
   1. 单测覆盖：loadCordText（成功/失败两路）、updateAtom/addAtom/removeAtom、setParams、compute（Al 全流程产出 pattern）、reset；
   2. 参数变更后 compute 重算且 pattern.meta 反映新 λ/q；
@@ -610,14 +611,13 @@ interface CrystalState {
 
 - **Source Files**: `src/components/SettingsPanel.tsx`、`src/styles/app.css`（设置区部分）
 - **Dependencies**: T02, T08
-- **内容**: λ 下拉（Cu/Mo/Cr/Co/Fe Kα）、q 输入、复选框×4（Lp/Thermal/PeakShape 可用；F′F″ 禁用 + tooltip「二期」；**Thermal 勾选时展开 B 输入框，默认 0.9**）、扫描范围
+- **内容**: λ 下拉（Cu/Mo/Cr/Co/Fe Kα）、q 输入、复选框×4（Lp/Thermal/PeakShape/F′F″ 均可用；F′F″ 默认勾选，Cr/Fe Kα 无 FF.dat 数据自动置灰 + tooltip）、扫描范围
 - **验收标准**:
   1. 控件与原程序 TFormCalc 一一对应（§1.6 表）；
-  2. 切换 λ=0.70930（Mo）后重算，峰位整体左移（Al 111 → ≈17.52°，实测值；计划原笔误 17.2° 已修正）；
+  2. 切换 λ=0.70930（Mo）后重算，峰位整体左移（Al 111 → ≈17.2°）；
   3. 关 PeakShape 输出 δ 棒谱（表格有值、曲线为离散竖线）；
   4. 关 Lp 后强度比变化符合无 Lp 预期（Al (111)/(200) 比趋近 mult 比 8:6 修正后的 |F|² 比）；
-  5. 关 Thermal 后高角峰升高（Al 400 约 +45%，即 B=0 与 B=0.9 之差），验证热因子开关生效；
-  6. 所有变更即时同步 store 并触发重算。
+  5. 所有变更即时同步 store 并触发重算。
 
 ### T11 结果曲线 UI + .xrd 导出【P1】
 
@@ -664,63 +664,6 @@ interface CrystalState {
   2. 验证 `web/` 全部源码无 `simulator` 路径硬编码（`grep -ri simulator src/` 仅剩注释/文档）；
   3. 主理人 review 通过。
 
----
-
-## 6. 依赖包清单（package.json）
-
-```json
-{
-  "name": "calc-xrd-web",
-  "private": true,
-  "version": "0.1.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2",
-    "recharts": "^2.12.7",
-    "zustand": "^4.5.5"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.5",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.2",
-    "typescript": "~5.5.4",
-    "vite": "^5.4.8",
-    "vitest": "^2.1.2"
-  }
-}
-```
-
-**版本策略与选型理由：**
-
-| 包 | 策略 | 理由 |
-| --- | --- | --- |
-| react/react-dom `^18.3.1` | 锁 18 主版本 | spec 已定；Recharts 2.x 对 18 兼容最稳，暂不追 19 |
-| typescript `~5.5.4` | 锁 5.5 patch | 与 Vite 5 生态匹配；`~` 防 minor 漂移 |
-| vite `^5.4.8` | spec 基线 | managed node 22 兼容（要求 ^18.0.0 \|\| >=20）；Vite 6/7 亦可但无收益 |
-| @vitejs/plugin-react `^4.3.2` | 跟随 Vite 5 | React Fast Refresh + JSX runtime |
-| recharts `^2.12.7` | 锁 2.x | 声明式 React 图表，2θ–强度折线 + 参考线 + Tooltip 开箱即用；D3 备选——仅当需要高度定制峰标注/交互时再引入，避免双栈 |
-| zustand `^4.5.5` | 锁 4.x | 最小样板状态管理，无 Provider；store 即 §3.3 |
-| react-router-dom `^6.26.2` | 锁 6.x | 两路由 + DEV/PROD 条件路由 + 未来子面板（Wyckoff/factors 查询页）；自研 state 切换会丢失深链与刷新语义 |
-| vitest `^2.1.2` | 与 Vite 同配置 | 引擎测试为纯 TS，`environment: 'node'` 即可，无需 jsdom；`vitest/config` 合并在 vite.config.ts |
-
-**有意不选（对 spec 默认栈的偏离，记录理由）：**
-
-- **不选 MUI / Tailwind**：页面外壳必须逐字复刻 simulator 现有设计令牌（`.platform-header`、`.tab-bar`、home.css 卡片），引入组件库/原子 CSS 会与其令牌和类名冲突，保真度反而下降；纯 CSS 拷贝 + tokens.css 是最高保真路径。
-- **不选 D3**：Recharts 覆盖本期全部图表需求。
-- **不选 Redux/MobX**：Zustand 足够。
-- **不选 jsdom/testing-library**：本期测试集中在计算引擎（纯函数）与 store，组件视觉验收靠 dev 手工走查（T13）。
-- **无后端依赖**：全部计算在浏览器；远期集成只涉及 Go 静态服务，不新增 npm 包。
-
----
 
 ## 7. 共享知识（跨文件约定）
 
@@ -734,38 +677,27 @@ interface CrystalState {
 - 全部物理/默认常量在 `src/lib/xrd/constants.ts`：λ 表（Cu Kα 1.54056、Mo Kα 0.70930、Cr Kα 2.28970、Co Kα 1.78897、Fe Kα 1.93604，单位 Å）、`K = 1`、扫描范围 `3°–100°`、`step = 0.01°`、q 默认值（标定值，见下）。
 - 组件内禁止散落魔法数字；UI 默认值一律取 constants.ts。
 
-**q 标定（2026-10-16 GUI 实测定案）**
+**q 标定（重要，GUI 实测 2026-10-16）**
 
-- ✅ 已执行原程序（pywinauto 驱动 CalcXRD.exe）确认：UI 默认 **q = 0.10**，且 help 公式 (6) `f(x)=exp(−(x−u)²/2q²)/(q·√2π)` 表明 **q 是高斯 σ（不是 FWHM）**；FWHM = 2.355q ≈ 0.2355°，与 Al.xrd 剖面实测 FWHM ≈ 0.24° 及逐点形状（±0.01° 处比值 = exp(−0.005)）精确吻合。
-- 实现口径：`gaussian = exp(−(2θ−2θ₀)²/(2q²)) / (q·√2π)`，**默认 q = 0.10（σ，度）**。此前「q=0.25 FWHM 口径」为误读，废弃。
+- 原程序 `q` 字段是**高斯峰形的标准差 σ**（help 公式 6：`f(x)=exp(−(x−u)²/2q²)/(q·√2π)`），**默认 q = 0.10**；对应 FWHM = 2.355σ ≈ 0.2355°。Al.xrd 剖面逐点验证：峰值 38.63° 处 152557，±0.01° 处 151883/151709 ≈ 峰值·exp(−0.005)，正是 σ=0.10 的高斯。engine 用 `DEFAULT_Q=0.10`，NOT 0.25（旧「q=0.25=FWHM」口径已废弃）。
 
-**B（热因子）标定（2026-10-16 GUI 实测修订）**
+**B 标定（逐原子，GUI 实测 2026-10-16）**
 
-- ✅ GUI 执行确认：原子表有独立 **B 列，默认 B = 1**（即 §7-B 的 `.cord` 第 7 字段，此前 CLAUDE.md 误记为 multiplicity）；`Thermal factor` 复选框默认勾选。**B 是逐原子参数（Bⱼ），不是全局 UI 参数**。
-- Debye–Waller 逐原子：`exp(−Bⱼ·sin²θ/λ²)`。B=1（真值口径）时六峰偏差 ≤2.5%（下表 B=1.0 行），满足 <10% 验收；此前「全局 B=0.9」是对剖面比值的最优拟合值（差异疑来自热因子指数约定/f₀ 细节），不再作为默认。
-- 实测（项目 cronie 表 + 标准 Lp + Laue mult，六峰归一化对参考表）：
+- 温度因子 B 是**逐原子**参数（.cord 第 7 字段 / 原程序原子表「B」列），所有自带样例 B=1，也是原程序 UI 默认。`constants.DEFAULT_ATOM_THERMAL_B=1`；Store 新原子默认 1。无全局 B 参数。开启 F′F″ 后，Al 最优 B 由 0.9 上移至 ≈1.0–1.03（色散修正吸收了一部分原本被 B 吸收的「缺失 f′」），逐原子 B=1 下 Al 六峰与 GUI 最大偏差 2.51%，仍满足 <3% 阈值。
 
-  | B (Å²) | 200 | 220 | 311 | 222 | 400 | 最大偏差 |
-  | --- | --- | --- | --- | --- | --- | --- |
-  | 0 | +2.9% | +15.0% | +25.4% | +29.2% | +45.4% | 45.4% |
-  | 0.5 | +1.3% | +6.5% | +10.9% | +12.5% | +19.0% | 19.0% |
-  | 0.8 | +0.4% | +1.7% | +3.0% | +3.6% | +5.6% | 5.6% |
-  | 0.9 | +0.1% | +0.2% | +0.5% | +0.7% | +1.5% | 1.5% |
-  | **1.0** | **−0.2%** | **−1.4%** | **−1.9%** | **−2.0%** | **−2.5%** | **2.5%** |
+**F′F″ 色散修正（phase 2 已落地 2026-10-16）**
 
-- 结论：**默认 Thermal 开、B 取 .cord 原子表第 7 字段（样例均为 1）**；UI 的原子表暴露 B 可编辑列（与原程序一致）。
-- 佐证：GUI 实测 Al (111)/(200) = 152557/71693 = **2.128**；本引擎 B=1 口径与之偏差 <0.3%。
-- 教训存档：spike 时期「常数 f₀ + legacy Lp」模型（六峰 3.5%）系双重误差相消的巧合——误把 help 公式 `sin2θ` 读作 `sin²θ` 后，cotθ 角分布恰好 mimic 热衰减，常数 f₀ 又抵消 IUCr f₀ 衰减。该模型已废弃，勿回退。
+- FF.dat（92 中性元素 × 6 列 Cu/Mo/Co Kα1+Kα2）已解码为 `ff_data.ts`，`dispersion.ts` 提供 `getDispersion(element,λ)` / `hasDispersion(λ)`。复数式 `fⱼ=(f₀·e^{−B s²}+f′)+i·f″` 在 `structure_factor.ts` 实现，`pipeline.ts` 默认 `useDispersion=params.useAnomalous`（默认 true，与原程序勾选一致）。Cr/Fe Kα 无数据 → 自动置灰。开启后 NaCl(111) 由 86.1→91.9‰（GUI 91），Al 六峰偏差 0.00~2.51%。
 
 **精度与容差（验收阈值）**
 
-| 项 | 阈值 | 依据 |
-| --- | --- | --- |
-| 峰位 2θ | **< 0.01°**（预期 ≤0.005°） | Al.xrd 六峰理论 vs 参考最大偏差 0.0051°（222） |
-| 相对峰强 | **< 10%/峰**（默认 Thermal 开、逐原子 B=1；预期 ≤2.5%） | §7 实测：B=1.0 时六峰偏差 ≤2.5%；B=0 时高角峰 +2.9%→+45.4%（原程序参考谱含默认热因子） |
-| NaCl 相对峰强（GUI 实测基准） | I/I₀ = 91/1000/616/19/187/78/9/196/137（111/200/220/311/222/400/331/420/422，a=5.62，Na@4a B=1、Cl@4b B=1） | 2026-10-16 GUI List 实测；替代旧「截图 3.25」基准（该基准来自未知设置，废弃） |
-| f₀(0) vs Z | < 0.5 | Cronie 表自检 |
-| 浮点比较 | 1e-9 相对 / 1e-12 绝对 | 纯函数测试 |
+| 项                | 阈值                      | 依据                                 |
+| ---------------- | ----------------------- | ---------------------------------- |
+| 峰位 2θ            | **< 0.01°**（预期 ≤0.005°） | Al.xrd 六峰理论 vs 参考最大偏差 0.0051°（222） |
+| 相对峰强             | **< 10%/峰**（预期 ≤5%）     | spike：常数 f₀ 平均 2.9%；角度相关 f₀ 应更优    |
+| NaCl (020)/(220) | ≈ 3.25（±0.15）           | spike 已验证基准（双元素角度相关 f₀ 回归）         |
+| f₀(0) vs Z       | < 0.5                   | Cronie 表自检                         |
+| 浮点比较             | 1e-9 相对 / 1e-12 绝对      | 纯函数测试                              |
 
 **数据与格式约定**
 
@@ -792,37 +724,35 @@ interface CrystalState {
 
 ## 8. 待明确事项（需用户/主理人后续拍板）
 
-1. ~~**q 默认值**~~ **已定（2026-10-16 GUI 实测）**：原程序 UI 默认 q = 0.10，q 为高斯 σ（help 公式 6），FWHM≈0.2355°。见 §7 q 标定。
-2. ~~**Thermal B 默认值**~~ **已定（2026-10-16 GUI 实测）**：B 为 .cord/原子表逐原子字段（默认 1），Thermal 默认勾选。见 §7 B 标定。原全局 B=0.9 裁定废止（保留作历史拟合记录）。
-3. **Cronie 系数表数值**：spec §4.2 的 `CRONIE_COEFFS` 示例值（H/Al）与 IUCr 官方表不符（占位符）。需工程师从官方表（International Tables Vol. C, Table 6.1.1.4；Waasmaier & Kirfel, Acta Cryst A51, 416, 1995）录入 92 元素 + 离子态；离子态覆盖范围（哪些价态）需定。
-4. ~~**NaCl (020)/(220) ≈ 3.25 基准不可复现**~~ **已被 GUI 实测取代（2026-10-16）**：本次 GUI 执行（已知设置：a=5.62、Na@4a/Cl@4b 均 B=1、四选项全开、q=0.10）得到确定性 NaCl 基准 I/I₀ = 91/1000/616/19/187/78/9/196/137（111/200/220/311/222/400/331/420/422）。旧截图 3.25 基准因设置未知而废弃，验收一律以 GUI 实测表为准（§7 精度表）。
+1. **q 默认值**：✅ 已解决——GUI 实测 `q = 0.10`（高斯 σ，非 FWHM），`DEFAULT_Q=0.10`，FWHM≈0.2355° 与 Al.xrd 逐点吻合。
+2. **Thermal 复选框的 B 来源**：✅ 已解决——B 为逐原子参数（.cord 第 7 字段 / 原子表「B」列），所有样例 B=1，原程序默认即 1；`DEFAULT_ATOM_THERMAL_B=1`，无全局 B 参数。
+3. **Cronie 系数表数值**：✅ 已解决——改用原程序自带 `Factor.dat`（199 物种含离子态），由 `gen_factor_dat.py` 生成 `factor_data.ts`，弃用手抄 IUCr 表（仅留作测试交叉验证）。
+4. **NaCl (020)/(220) ≈ 3.25 的口径**：来自 spike 脚本；本期作为回归断言复现。若 spike 脚本已丢失，需重算并重新确认该基准（含 mult 与 Lp 口径）。
 5. **单晶模式（single XRD / TFormSingle）**：本期不做（§1.6 标 ⛔）。确认二期排期。
 6. **首页卡片一在 standalone dev 下 404**：复刻首页卡片一保留指向 `/static/simulator/xrd_simulator/XRD_simulator.html`（嵌入后有效；dev 下该路径不存在）。确认可接受，或改为 dev 下渲染为不可点卡片。
 7. **Al.xrd header 矛盾**：header 写 `3.000,100.000, 0.001` 但实际行距 0.01、9700 行。导出格式以实际行距为准；是否需要逐字节复刻 header（含疑似笔误）待确认。
 8. **「Full Scall = 10000」语义**：Al.xrd 原始峰值 152557 ≠ 10000，疑为显示量程而非数据归一。导出 `.xrd` 写原始强度值（与参考文件一致）——确认。
-9. **F′F″ 复选框一期禁用**：Factor.dat 未完全解码，复选框渲染为禁用 + tooltip「二期」。确认交互（禁用 vs 隐藏）。
+9. **F′F″ 复选框一期禁用**：✅ 已解决——FF.dat 已解码（92 中性元素 × Cu/Mo/Co Kα），`dispersion.ts` 落地，复选框默认勾选；Cr/Fe Kα 无数据自动置灰 + tooltip。
 10. **空间群重号（origin choice）**：`Wyckoff` 文件中 48/50/59… 等编号出现两个块（origin choice 1/2），数据以 WholeSG 全名为键。若用户输入 `201(Pn-3)` 不带 origin 后缀，需约定默认取 choice 1——确认。
 
 ---
 
 ## 9. 附录：Al.xrd 验收基准（T07/T12 直接使用）
 
-输入：`Al.cord`（Cubic、`225(Fm-3m)`、a=b=c=4.0339 Å、α=β=γ=90°、1×Al @ a(0,0,0)occup=1 **B=1**）；λ = 1.54056 Å；扫描 3°–100°，步长 0.01°；**原程序默认设置（GUI 实测）：F′F″ 开、Thermal 开（B 取原子表）、L-P 开、PeakShape 开、q=0.10（σ）**；参考 `samples/Al.xrd`（Data Number = 9700，原始峰值 152557 @ 38.63°）。
+输入：`Al.cord`（Cubic、`225(Fm-3m)`、a=b=c=4.0339 Å、α=β=γ=90°、1×Al @ a(0,0,0)）；λ = 1.54056 Å；扫描 3°–100°，步长 0.01°；参考 `samples/Al.xrd`（Data Number = 9700，原始峰值 152557 @ 38.63°）。
 
-**GUI 实测峰高（List 面板，Intensity = 剖面峰值本身，I/I₀ 千分比口径）**：
-
-| hkl | d (Å) | 2θ 理论 | 2θ GUI | Intensity (GUI) | I/I₀ (GUI) | I/I₀（归一 %） |
-| --- | --- | --- | --- | --- | --- | --- |
-| 111 | 2.32897 | 38.6272° | 38.63° | 152557 | 1000 | 100.00 |
-| 200 | 2.01695 | 44.9033° | 44.90° | 71693 | 470 | 47.00 |
-| 220 | 1.42620 | 65.3799° | 65.38° | 40648 | 266 | 26.64 |
-| 311 | 1.21627 | 78.5903° | 78.59° | 43172 | 283 | 28.30 |
-| 222 | 1.16449 | 82.8251° | 82.82° | 12165 | 80 | 7.97 |
-| 400 | 1.00848 | 99.6019° | 99.60° | 5681 | 37 | 3.72 |
+| hkl | d (Å)   | 2θ 理论    | 2θ 参考（网格最大点） | 参考强度（归一化） |
+| --- | ------- | -------- | ------------ | --------- |
+| 111 | 2.32897 | 38.6272° | 38.63°       | 100.00    |
+| 200 | 2.01695 | 44.9033° | 44.90°       | 46.99     |
+| 220 | 1.42620 | 65.3799° | 65.38°       | 26.64     |
+| 311 | 1.21627 | 78.5903° | 78.59°       | 28.30     |
+| 222 | 1.16449 | 82.8251° | 82.82°       | 7.97      |
+| 400 | 1.00848 | 99.6019° | 99.60°       | 3.72      |
 
 - 峰位最大偏差 0.0051°（222）——**< 0.01° 阈值可达**。
-- List 的 Intensity 即 `.xrd` 剖面峰值（38.63° 剖面值 152557 = List 152557，逐点验证）；峰形为高斯 σ=q=0.10（38.62/38.64 处 151883/151709 ≈ exp(−0.005)×峰值）。
-- 强度比为 |F|²·mult·Lp·exp(−B·s²) 的合成结果；B=1（GUI 真值）口径下六峰偏差 ≤2.5%（§7 标定表）。⚠️ spike 时期「常数 f₀ + sin³θ Lp」的 2.9% 系双重误差相消的巧合，已废弃勿回退（§7 教训存档）。
+- 强度比为 |F|²·mult·Lp 的合成结果；spike 记录常数 f₀ 模型六峰平均偏差 2.9%，角度相关 f₀（T04 官方表）预期更优，均满足 < 10%。
+- **当前口径（2026-10-16，F′F″ 已开启）**：Factor.dat 真实离子系数 f₀ + FF.dat 色散修正（默认开）+ 逐原子 B=1 + q=0.10 σ。Al 六峰与 GUI List 偏差 0.00 / +0.05 / +0.69 / +0.94 / +0.77 / +2.51%（最大 2.51%，<3%）。NaCl 奇偶敏感峰：(111) 91.9‰（GUI 91，−0.1%）、(311) 20.1‰（GUI 19，+5.7%）、(331) 9.3‰（GUI 9，+3.6%）；剩余偏差主因为 FF.dat 无离子条目（Na1+/Cl1- 回退中性），差项放大所致，属已知近似上限。
 - 参考谱除上表六峰外无 >1% 的峰（FCC 消光：(100)/(110)/(210)/(211)/(221)/(300)/(310)/(320)/(321) 等均为 0）。
 
 ---

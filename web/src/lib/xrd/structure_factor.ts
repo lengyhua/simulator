@@ -8,16 +8,23 @@
  * absences therefore emerge naturally from the position expansion — no
  * extinction table is consulted (plan §4.1).
  *
- * Per-atom scattering factor (plan §4.1, GUI-verified 2026-10-16):
+ * Per-atom scattering factor (plan §4.1, GUI-verified 2026-10-16, with the
+ * F′F″ correction from FF.dat, T07 phase 2):
  *
- *   fⱼ = f₀(element, s) · occupancyⱼ · exp(−Bⱼ·s²),   s = sinθ/λ = 1/(2d)
+ *   fⱼ = [ f₀(element, s)·exp(−Bⱼ·s²) + f′ ] + i·f″      (complex)
+ *   F(hkl) = Σⱼ occⱼ · fⱼ · e^{iφⱼ},   φⱼ = 2π(hxⱼ+kyⱼ+lzⱼ)
  *
  * `Bⱼ` is the atom's own thermal factor (the .cord 7th field / the legacy
  * program's atom-table "B" column, default 1) — it is PER ATOM, not a global
- * parameter, and the exponential is suppressed when `useThermal` is false.
+ * parameter. The Debye–Waller factor attenuates ONLY f₀ (IT Vol. C); f′/f″ are
+ * s-independent constants. When `useDispersion` is false (or the element/λ is
+ * unsupported, e.g. Cr/Fe Kα) the correction vanishes and fⱼ reduces to the
+ * neutral f₀ form above. The complex form (not the legacy help scalar eq. 5) is
+ * required for multi-species structures such as NaCl.
  */
 
 import { f0 } from './cronie';
+import { getDispersion } from './dispersion';
 import { expandPositions } from './wyckoff';
 import type { Crystal } from './types';
 
@@ -26,11 +33,17 @@ const TWO_PI = 2 * Math.PI;
 
 /** Options for {@link structureFactor} (plan §3.2). */
 export interface SFOptions {
-  /** Wavelength in Å. Kept for the phase-2 F′F″ correction (λ-dependent);
-   *  it cancels algebraically in s = sinθ/λ = 1/(2d) for the neutral f₀. */
+  /** Wavelength in Å — drives the F′F″ (anomalous-dispersion) correction. */
   lambda: number;
   /** Applies each atom's Debye–Waller factor exp(−Bⱼ·s²) when true. */
   useThermal: boolean;
+  /**
+   * Applies the F′F″ anomalous-dispersion correction (default ON, matching the
+   * legacy GUI's checked checkbox). When true, each atom's scattering factor
+   * becomes fⱼ·e^{iφ} = (f₀·e^{−Bⱼs²}+f′) + i·f″; unsupported elements/λ return
+   * f′=f″=0 (see dispersion.ts), so this is a safe no-op for Cr/Fe Kα.
+   */
+  useDispersion?: boolean;
 }
 
 /** A complex structure factor in Cartesian form. */
@@ -152,12 +165,25 @@ export function structureFactor(
   for (const atom of crystal.atoms) {
     const positions = expandPositions(crystal.sgKey, atom.wyckoff, atom.x, atom.y, atom.z);
     // Debye–Waller is per atom: exp(−Bⱼ·sin²θ/λ²), Bⱼ from the .cord atom row.
-    const thermal = opts.useThermal ? Math.exp(-atom.thermalB * s * s) : 1;
-    const f = f0(atom.element, s) * atom.occupancy * thermal;
+    // It attenuates only f₀, NOT the anomalous f′/f″ constants (IT Vol. C).
+    const f0s = f0(atom.element, s) * (opts.useThermal ? Math.exp(-atom.thermalB * s * s) : 1);
+    // Anomalous dispersion: F′F″ from FF.dat, indexed by Z (not symbol — Z=91
+    // is mislabeled "Po" in the source). Unsupported element/λ → 0 (no-op).
+    const fp = opts.useDispersion ? getDispersion(atom.element, opts.lambda).fPrime : 0;
+    const fpp = opts.useDispersion ? getDispersion(atom.element, opts.lambda).fDoublePrime : 0;
+    // Complex atomic factor: (f0s + f′) + i·f″. Multiply by e^{iφ} = (cosφ + i sinφ):
+    //   Re = A·cosφ − B·sinφ,  Im = A·sinφ + B·cosφ
+    // where A = occ·(f0s + f′) and B = occ·f″. Both real & imaginary parts of
+    // the dispersion contribute — for non-centrosymmetric structures omitting the
+    // −B·sinφ term on `re` produces a real error on weak peaks.
+    const a = atom.occupancy * (f0s + fp);
+    const bi = atom.occupancy * fpp;
     for (const [x, y, z] of positions) {
       const phase = TWO_PI * (h * x + k * y + l * z);
-      re += f * Math.cos(phase);
-      im += f * Math.sin(phase);
+      const c = Math.cos(phase);
+      const sn = Math.sin(phase);
+      re += a * c - bi * sn;
+      im += a * sn + bi * c;
     }
   }
   return { re, im };

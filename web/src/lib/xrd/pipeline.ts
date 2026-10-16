@@ -104,10 +104,12 @@ export function computeXRDPattern(crystal: Crystal, params: XrdParams): XRDPatte
   const nl = Math.max(1, Math.floor(gMax * crystal.c));
 
   // Per-atom thermal factors come from the crystal itself (the .cord "B"
-  // column); `useThermal` is only the on/off switch.
+  // column); `useThermal` is only the on/off switch. The F′F″ correction is
+  // driven by `useAnomalous` (legacy GUI default: checkbox checked).
   const sfOpts = {
     lambda: params.lambda,
     useThermal: params.useThermal,
+    useDispersion: params.useAnomalous,
   };
 
   const candidates: HKLReflection[] = [];

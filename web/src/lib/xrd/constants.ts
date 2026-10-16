@@ -53,6 +53,14 @@ export const DEFAULT_Q: number = 0.10;
 export const DEFAULT_ATOM_THERMAL_B: number = 1;
 
 /**
+ * Default F′F″ anomalous-dispersion switch. `true` to match the legacy GUI's
+ * default (the F′F″ checkbox is checked on launch). The correction is a no-op
+ * for unsupported elements/wavelengths (e.g. Cr/Fe Kα), so leaving it on is
+ * always safe.
+ */
+export const DEFAULT_USE_DISPERSION: boolean = true;
+
+/**
  * Numerical floor for the Bragg angle θ (degrees) used by the Lorentz factor.
  * `Lp ∝ 1/sin²θ` diverges as θ→0; clamping θ keeps the factor finite instead
  * of returning Infinity (plan §5-T06 acceptance 5).
@@ -78,7 +86,7 @@ export function createDefaultParams(): XrdParams {
     useLp: true,
     useThermal: true,
     usePeakShape: true,
-    useAnomalous: true,
+    useAnomalous: DEFAULT_USE_DISPERSION,
     rangeMin: SCAN_RANGE_MIN,
     rangeMax: SCAN_RANGE_MAX,
     step: SCAN_STEP,

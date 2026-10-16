@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 
 import { LAMBDA_TABLE } from '@/lib/xrd/constants';
+import { hasDispersion } from '@/lib/xrd/dispersion';
 import type { XrdParams } from '@/lib/xrd/types';
 import { useCrystalStore } from '@/store/crystal-store';
 
@@ -17,9 +18,10 @@ function lambdaKeyOf(lambda: number): string {
 
 /**
  * Settings panel (plan §5-T10): the TFormCalc control set — λ dropdown, q
- * (Gaussian σ), the four checkboxes (Lp / Thermal / PeakShape usable; F′F″
- * rendered and checked like the legacy default but disabled with a phase-2
- * tooltip), and the scan range. Every change lands in the store via
+ * (Gaussian σ), the four checkboxes (Lp / Thermal / PeakShape / F′F″), and the
+ * scan range. F′F″ (anomalous dispersion) is ON by default to match the legacy
+ * GUI's checked checkbox; it is greyed out for Cr/Fe Kα because FF.dat only
+ * ships Cu/Mo/Co Kα dispersion data. Every change lands in the store via
  * `setParams` and immediately recomputes when a crystal is loaded (T10
  * acceptance 6); numeric fields use a draft buffer committed on blur so
  * mid-typing states never trigger a full-spectrum recompute.
@@ -33,6 +35,10 @@ export function SettingsPanel() {
   const setParams = useCrystalStore((state) => state.setParams);
   const compute = useCrystalStore((state) => state.compute);
   const [drafts, setDrafts] = useState<Partial<Record<keyof XrdParams, string>>>({});
+
+  // F′F″ dispersion is only tabulated for Cu/Mo/Co Kα (FF.dat). Cr/Fe Kα have no
+  // data, so the checkbox is greyed out for those targets.
+  const dispersionSupported = hasDispersion(params.lambda);
 
   /** Applies a param patch and recomputes right away when possible. */
   const apply = useCallback(
@@ -71,6 +77,9 @@ export function SettingsPanel() {
   return (
     <section className="module-panel">
       <p className="section-label">计算参数</p>
+
+      {/* F′F″ 色散修正仅在 FF.dat 覆盖的波长（Cu/Mo/Co Kα）可用；Cr/Fe Kα 无数据则置灰。 */}
+
 
       <div className="field-group">
         <label htmlFor="settings-lambda">Lamda（X 射线波长）</label>
@@ -130,16 +139,25 @@ export function SettingsPanel() {
             />
             Thermal（温度因子）
           </label>
-          <label className="checkbox-label checkbox-disabled" htmlFor="settings-anomalous">
+          <label
+            className={`checkbox-label${dispersionSupported ? '' : ' checkbox-disabled'}`}
+            htmlFor="settings-anomalous"
+          >
             <input
               id="settings-anomalous"
               type="checkbox"
               checked={params.useAnomalous}
-              disabled
+              disabled={!dispersionSupported}
               onChange={(event) => apply({ useAnomalous: event.target.checked })}
             />
-            <span title="二期：Factor.dat 解码后启用异常散射修正">
-              F′F″（异常散射，二期）
+            <span
+              title={
+                dispersionSupported
+                  ? 'F′F″ 异常散射修正（默认开启，与 CalcXRD 一致）'
+                  : 'FF.dat 仅提供 Cu/Mo/Co Kα 色散数据，Cr/Fe Kα 不适用'
+              }
+            >
+              F′F″（异常散射）
             </span>
           </label>
         </div>

@@ -103,8 +103,8 @@ describe('pipeline — Al.xrd 全谱验收（T07，λ=1.54056、q=0.10 σ、3–
         `hkl ${reference.hkl.join('')} 归一化强度偏差 ${(deviation * 100).toFixed(1)}%`,
       ).toBeLessThan(0.1);
     }
-    // 实测偏差（标准 Lp + IUCr Cronie f₀ + 逐原子 B=1、q=0.10 σ）：
-    // 六峰 −0.25~−2.38%（111 为归一化基准恒 0，GUI 千分比口径见验收 6）。
+    // 实测偏差（标准 Lp + Factor.dat f₀ + F′F″ 色散修正默认开启 + 逐原子 B=1、
+    // q=0.10 σ）：六峰 0.00~2.51%（最强 (111) 恒 0，最弱 (400) 2.51%）。
     // 法证结论（详见 lorentz.ts docstring）：legacy help 的 Lp 原文实为
     // (1+cos²2θ)/(sin2θ·sinθ)，sin2θ 是双角，等价于标准式/2——归一化后与
     // 标准式一致。B 为 .cord 逐原子字段（GUI 实测默认 1），关 Thermal 时
@@ -154,7 +154,9 @@ describe('pipeline — Al.xrd 全谱验收（T07，λ=1.54056、q=0.10 σ、3–
     // 2026-10-16 pywinauto 驱动原程序实测（List 面板 Intensity = 剖面峰值）：
     // 1000/470/266/283/80/37。口径：F′F″/Thermal/L-P/PeakShape 全开、
     // 逐原子 B=1、q=0.10(σ)、λ=1.54056、Al a=4.0339。
-    // 本引擎实测偏差：0.00 / −0.25 / −1.22 / −1.91 / −2.38 / −1.99 %。
+    // 本引擎实测偏差（Factor.dat f₀ + F′F″ 色散默认开启）：0.00 / +0.05 / +0.69 /
+    // +0.94 / +0.77 / +2.51 %。最弱峰 (400) +2.51% 为当前口径上限（FF.dat 离子
+    // 回退 + 逐原子 B=1，未做 B 重扫）；仍优于验收阈值 ≤3%。
     const guiPermille: Array<[number, number, number, number]> = [
       [1, 1, 1, 1000],
       [2, 0, 0, 470],
@@ -214,16 +216,15 @@ describe('pipeline — Al.xrd 全谱验收（T07，λ=1.54056、q=0.10 σ、3–
     }
   });
 
-  it('NaCl 奇偶敏感峰（111/311/331）：实测值锁定，差项放大导致 ≤5% 暂不可达', () => {
-    // 全奇指数峰的 F = f_Na − f_Cl（差项）：强度 ∝ |f_Na − f_Cl|²，而差项
-    // 本身远小于和项（低角 ≈ 18−10 = 8，高角更小），因此 f₀ 的微小绝对
-    // 误差被放大 (f_Na+f_Cl)/|f_Na−f_Cl| ≈ 3–4 倍，再经平方进入强度。
-    // 接入 Factor.dat 真实离子系数后：111 由 −9.30% 改善到 −5.33%（方向
-    // 正确，证明离子系数有效），但 311/331 因高角差项更小、放大更严重，
-    // 分别为 −11.43% / −14.60%（中性近似时为 −6.63% / −12.09%）。
-    // 剩余偏差的候选主因是 F′F″ 异常散射修正（原程序默认开启，FF.dat
-    // 解码中，属二期）：差项对 F′ 的差值同样敏感。
-    // 按纪律带数据报告、不静默放宽——锁定实测值，待 F′F″ 落地后重测。
+  it('NaCl 奇偶敏感峰（111/311/331）：F′F″ 落地后逼近 GUI（离子回退残差 ≤6%）', () => {
+    // 全奇指数峰的 F = f_Na − f_Cl（差项），对 F′/f₀ 的微小差异极敏感。
+    // 接入 Factor.dat 真实离子系数后 (111) 由 −9.30% 改善到 −5.33%（中性近似）；
+    // 再接入 FF.dat 的 F′F″ 色散修正（默认开启，与 GUI 默认勾选一致）后进一步
+    // 逼近：111 = 91.9（GUI 91，−0.1%）、311 = 20.1（GUI 19，+5.7%）、
+    // 331 = 9.3（GUI 9，+3.6%）。
+    // 剩余偏差的主因是 FF.dat 无离子条目（Na1+/Cl1- 回退中性），差项放大所致，
+    // 属已知近似上限（详见 docs/ff-dat-spec.md §5.7），非随机误差。
+    // 按纪律带数据报告、不静默放宽——锁定实测值并量化与 GUI 的偏差。
     const naclPattern = computeXRDPattern(parseCord(sampleText('nacl')), alParams);
     const permilleOf = (h: number, k: number, l: number): number => {
       const reflection = naclPattern.reflections.find(
@@ -231,13 +232,13 @@ describe('pipeline — Al.xrd 全谱验收（T07，λ=1.54056、q=0.10 σ、3–
       );
       return ((reflection?.intensityNorm ?? 0) / 100) * 1000;
     };
-    expect(permilleOf(1, 1, 1)).toBeCloseTo(86.1, 1); // GUI 91（−5.33%）
-    expect(permilleOf(3, 1, 1)).toBeCloseTo(16.8, 1); // GUI 19（−11.43%）
-    expect(permilleOf(3, 3, 1)).toBeCloseTo(7.7, 1); // GUI 9（−14.60%）
-    // 偏差方向一致（本引擎系统性偏低），说明是同一系统性因素而非随机误差。
-    expect(permilleOf(1, 1, 1)).toBeLessThan(91);
-    expect(permilleOf(3, 1, 1)).toBeLessThan(19);
-    expect(permilleOf(3, 3, 1)).toBeLessThan(9);
+    expect(permilleOf(1, 1, 1)).toBeCloseTo(91.9, 1); // GUI 91
+    expect(permilleOf(3, 1, 1)).toBeCloseTo(20.1, 1); // GUI 19
+    expect(permilleOf(3, 3, 1)).toBeCloseTo(9.3, 1); // GUI 9
+    // 与 GUI 偏差锁定（离子回退近似上限）：
+    expect(Math.abs(permilleOf(1, 1, 1) - 91) / 91).toBeLessThan(0.02);
+    expect(Math.abs(permilleOf(3, 1, 1) - 19) / 19).toBeLessThan(0.06);
+    expect(Math.abs(permilleOf(3, 3, 1) - 9) / 9).toBeLessThan(0.04);
   });
 
   it('验收 3：无虚假峰——六峰之外谱面无 >1% 全局最大的峰', () => {
@@ -402,12 +403,13 @@ describe('pipeline — 其他样品与参数分支', () => {
     const withoutLp = computeXRDPattern(al, { ...alParams, useLp: false });
     const pick = (p: XRDPattern, h: number, k: number, l: number): number =>
       p.reflections.find((r) => r.h === h && r.k === k && r.l === l)?.intensityNorm ?? -1;
-    // 本实现（标准 Lp + IUCr f₀ + 逐原子 B=1）：有 Lp 时 (111)/(200) = 2.133
-    // （GUI 实测原程序 List 152557/71693 = 2.128，偏差 0.24%）；无 Lp 时
-    // = (mult 8/6)·(|F|² 比，热因子含于 |F|² 内) = 1.524。
+    // 本实现（标准 Lp + Factor.dat f₀ + F′F″ 色散修正默认开启 + 逐原子 B=1）：
+    // 有 Lp 时 (111)/(200) = 2.1266（GUI 实测原程序 List 152557/71693 = 2.128，
+    // 偏差 0.06%，色散开启后更贴合）；无 Lp 时 = (mult 8/6)·(|F|² 比，热因子与
+    // 色散含于 |F|² 内) = 1.5188。
     // （残差分析见强度验收测试说明。）
-    expect(pick(withLp, 1, 1, 1) / pick(withLp, 2, 0, 0)).toBeCloseTo(2.133, 2);
-    expect(pick(withoutLp, 1, 1, 1) / pick(withoutLp, 2, 0, 0)).toBeCloseTo(1.524, 2);
+    expect(pick(withLp, 1, 1, 1) / pick(withLp, 2, 0, 0)).toBeCloseTo(2.1266, 3);
+    expect(pick(withoutLp, 1, 1, 1) / pick(withoutLp, 2, 0, 0)).toBeCloseTo(1.5188, 3);
   });
 
   it('λ 变更 → 峰位整体左移且 meta 反映新 λ', () => {
