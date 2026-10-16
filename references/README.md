@@ -197,32 +197,24 @@ t.resetAll()
 | `FF.dat` Z-trend（Ba→La→Ce→Pr→Nd） | Kα1/Kα2 能量差 ~20 eV 自洽性       | 内部一致性       | La/Pr 自洽 ✅，Ce Kα1 孤立即断                    |
 | `FF.dat` 全 92 元素 f″                | NIST FFAST 批量                      | 全面校验         | 待执行（二期）                                     |
 
-### 6.3 推荐的 Python 自动化脚本（二期落地）
+### 6.3 推荐的 Python 自动化脚本（已落地）
 
-```python
-# scripts/cross_validate_f0.py（示意）
-import diffpy.srreal.scatteringfactortable as sft
-from web_src_lib_xrd_factor_data import FACTOR_COEFFS  # 需转换为 Python 可导入格式
+以下两个脚本已完成并可直接运行（需先 `curl` 下载 gemmi `it92.hpp` 到
+`scripts/tmp/it92.hpp`，已提交于 2026-10-16）：
 
-table = sft.SFTXray()
+```bash
+# 1. f₀ 交叉验证（Factor.dat vs gemmi it92.hpp）
+python3 scripts/cross_validate_f0.py           # 全量
+python3 scripts/cross_validate_f0.py --minimal # 只打印偏差 > 2% 的元素
 
-for symbol, coeffs in list(FACTOR_COEFFS.items())[:20]:
-    a, b, c = coeffs['a'], coeffs['b'], coeffs['c']
-    # 方式 A：本仓库系数在 s=0.1 求值
-    s = 0.1
-    f0_ours = c + sum(ai * exp(-bi * s*s) for ai, bi in zip(a, b))
-    # 方式 B：srreal 独立查询
-    f0_ref  = table.lookup(symbol, s)
-    print(f"{symbol:6s}  f0_ours={f0_ours:7.4f}  f0_srreal={f0_ref:7.4f}  diff={abs(f0_ours-f0_ref):.4f}")
+# 2. F′/F″ 交叉验证（FF.dat vs IUCr/物理一致性）
+python3 scripts/cross_validate_ff.py           # 全量
+python3 scripts/cross_validate_ff.py --check-ce # 只查 Ce
 ```
 
-```python
-# scripts/cross_validate_ff.py（示意）
-# 方式 A：FF.dat 值
-# 方式 B：NIST FFAST / Sasaki 在线 API（若可用）
-# 方式 C：Cromer–Liberman 系数（IUCr CIF 字典）
-# 对 Z=1..92 全量比对，报告差值 > 0.1 的条目
-```
+**关键结果（2026-10-16 运行确认）**：
+- f₀：92 中性元素全通过（f₀(0)≈Z）；离子 f₀ 与 IUCr 偏差 <0.1%（Bi5+ s=0.3 为 5-Gaussian 截断边缘效应，1.3%）；唯一中性偏差是 H s=0.5（31%，4-Gaussian 截断已知边缘效应，非数据错误）。
+- F′/F″：Ce 缺陷复核确认（Δf'=+0.79）；Kα1/Kα2 自洽扫描发现 Dy/Eu/Gd/Ho/Lu/Tm 的 Cu 列 Δf' 较大，经 L3 吸收边核算（`cross_validate_ff.py` 物理感知阈值）确认为**物理正常**（这些元素 L3 边距 Cu Kα1 <2 keV），非数据缺陷。Ce 缺陷是唯一无法用物理自洽性解释的异常值。
 
 ---
 
@@ -233,11 +225,12 @@ for symbol, coeffs in list(FACTOR_COEFFS.items())[:20]:
 | 1 | **离子 F′/F″ 缺失**              | 离子化合物（NaCl、BaTiO₃ 等）弱峰强度偏差最大 ~5.7% | 开放（P1）                      | 无现成库支持；需手动计算                  |
 | 2 | **Ce (Z=58) Cu Kα1 f′ 录入缺陷** | CeO₂ 等含 Ce 样品在 Cu Kα 下失真 ~1.4%             | 已确认，保持 byte-for-byte 保真 | 修正值 ≈−1.88（validation §3.2）       |
 | 3 | **Cr/Fe Kα 覆盖缺口**             | 选 Cr/Fe 靶时 f′=f″=0（置灰保真）                  | 开放（P1）                      | 用现代表补充将偏离保真                    |
-| 4 | **Kα1/Kα2 双线是否叠加**         | Al(400)+2.51% 高角残差头号嫌疑                       | 未决（P0，需 legacy GUI 取证）  | 见 `ff-dat-spec.md` §7.5               |
+| 4 | ~~Kα1/Kα2 双线是否叠加~~ | ~~Al(400)+2.51% 高角残差头号嫌疑~~ | **已定案（2026-10-16）**：legacy 只用 Kα1，证据见 `ff-dat-spec.md` §7.5（Al.xrd 99.94° 无 Kα2 卫星峰） | 开放项已关闭，可从清单移除 |
 | 5 | **PDF 数值层缺失**                 | 扫描版无文本层，精确系数无法自动提取                 | 需手工 / 走 IUCr 在线           | 不影响当前交付                            |
 | 6 | **cronie_data.ts 双份表冗余**      | 测试交叉验证已足后可删                               | 待确认测试覆盖                  | `intensity-uncertainty-review.md` §3.3 |
 
 > **与 §6 交叉验证方案的对应**：
-> 开放项 2（Ce 缺陷）→ §6.2 矩阵已定案；
+> 开放项 2（Ce 缺陷）→ §6.2 矩阵已定案，§6.3 `cross_validate_ff.py` 复核确认；
 > 开放项 1（离子色散）→ §6.3 脚本为二期实施模板；
-> 开放项 3（Cr/Fe）→ 需 §3 中 Sasaki/NIST 工具补值。
+> 开放项 3（Cr/Fe）→ 需 §3 中 Sasaki/NIST 工具补值；
+> ~~开放项 4（Kα1/Kα2 双线）~~ → 已定案关闭，见 §6.3 `cross_validate_ff.py` 及 `ff-dat-spec.md` §7.5。
