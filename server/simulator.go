@@ -132,39 +132,11 @@ func readPath(w http.ResponseWriter, r *http.Request, path string) {
 
 	w.Header().Set("Content-Length", strconv.Itoa(len(bytes)))
 	w.Write(bytes)
-	f, err := os.Open(path)
-	if err != nil {
-		Error(w, toHTTPError(err))
-		return
-	}
-	defer f.Close()
-
-	d, err := f.Stat()
-	if err != nil {
-		Error(w, toHTTPError(err))
-		return
-	}
-
-	if d.IsDir() {
-		DirList(w, r, f)
-		return
-	}
-
-	/*data, err := ioutil.ReadAll(f)
-	if err != nil {
-		Error(w, toHTTPError(err))
-		return
-	}
-
-	ext := filepath.Ext(path)
-	if contentType := extensionToContentType[ext]; contentType != "" {
-		w.Header().Set("Content-Type", contentType)
-	}
-
-	w.Header().Set("Content-Length", strconv.FormatInt(d.Size(), 10))
-	w.Write(data)*/
 }
 
+// DirList 保留为死代码兜底（当前路由全部走 htmlbind.Asset，目录节点查不到
+// 会 404，此函数实际不会被触发）。若将来有人把它重新接回 http.FileServer
+// 路由，输出已按文件名做 HTML 转义，不引入存储型 XSS。
 func DirList(w http.ResponseWriter, r *http.Request, f http.File) {
 	dirs, err := f.Readdir(-1)
 	if err != nil {
@@ -173,21 +145,20 @@ func DirList(w http.ResponseWriter, r *http.Request, f http.File) {
 	}
 	sort.Slice(dirs, func(i, j int) bool { return dirs[i].Name() < dirs[j].Name() })
 
-	// 注意：在当前的路由（/static/ 走 htmlbind.Asset）里，Asset 查不到目录
-	// 节点会直接返回 404，DirList 实际上不会被触发。保留它并对输出做 HTML
-	// 转义，防止将来有人把它重新接回 http.FileServer 路由时引入 XSS。
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintln(w, "<pre>")
+	_, _ = fmt.Fprintln(w, "<pre>")
 	for _, d := range dirs {
 		name := d.Name()
 		if d.IsDir() {
 			name += "/"
 		}
-		link := url.URL{Path: name}
-		fmt.Fprintf(w, "<a href=\"%s\">%s</a>\n",
-			html.EscapeString(link.String()), html.EscapeString(name))
+		// name 来自文件名；url.PathEscape 防止文件名里的特殊字符（如 ?、#、"）
+		// 破坏 href，再用 html.EscapeString 转义整段 HTML。
+		escaped := html.EscapeString(name)
+		_, _ = fmt.Fprintf(w, "<a href=\"%s\">%s</a>\n",
+			html.EscapeString(url.PathEscape(name)), escaped)
 	}
-	fmt.Fprintln(w, "</pre>")
+	_, _ = fmt.Fprintln(w, "</pre>")
 }
 
 func toHTTPError(err error) int {
