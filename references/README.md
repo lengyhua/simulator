@@ -58,19 +58,23 @@ f = f₀ · exp(−B·s²)
 **「Mathematical, Physical and Chemical Tables」**（E. Prince ed., 4th ed., Kluwer, 1992；IUCr 在线版）。
 绝大多数晶体学软件 f₀ 系数（CCP4 `atomsf.lib`、cctbx `it1992`、Gemmi `it92.hpp`、BraggLibrary）的上游。
 
-本仓库 PDF（扫描版，1028 页，正文为位图）中的相关表：
+本仓库 PDF 的相关表（正文含可提取但**有缺陷**的文本层，扫描+OCR 混合）：
 
 | 表号                    | 内容                                                      | 对应本项目                                                                                     |
 | ----------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| **Table 6.1.1.1** | 自由原子 f₀（按 sinθ/λ 采样，~PDF p555）               | f₀ 权威采样值，可用于交叉验证 `Factor.dat`                                                  |
-| **Table 6.1.1.3** | 化学相关离子 f₀（O²⁻、Na⁺ 等，~PDF p566）             | 对应 `Factor.dat` 的 ~107 种离子条目                                                         |
-| **Table 6.1.1.4** | 解析近似系数（Cromer–Mann 4-Gaussian+c，~PDF p578–581） | `f₀(s)=Σaᵢexp(−bᵢs²)+c` 的**标准系数来源**；`cronie_data.ts`（仅测试）手抄此表 |
+| **Table 6.1.1.1** | 自由原子 f₀（按 sinθ/λ 采样）                          | f₀ 权威采样值，可用于交叉验证 `Factor.dat`                                                  |
+| **Table 6.1.1.3** | 化学相关离子 f₀（113 物种：O²⁻、Na⁺ 等）            | **已提取为 `docs/itc-c-table6113.json`**（补上离子 f₀ 权威来源，见 `docs/itc-c-table6113-extraction.md`） |
+| **Table 6.1.1.4** | 解析近似系数（Cromer–Mann 4-Gaussian+c）             | `f₀(s)=Σaᵢexp(−bᵢs²)+c` 的**标准系数来源**；`cronie_data.ts`（仅测试）手抄此表 |
 | Table 6.1.1.5           | 高 s 区间修正（2<s/λ<6 Å⁻¹）                          | 本项目暂未使用                                                                                 |
 | §6.1.1.1–.3           | Rayleigh/Compton/原子散射因子理论                         | 背景                                                                                           |
 | §6.1.2 / Part 4        | 中子相干/非相干散射长度                                   | 与 XRD 项目无关，仅记录                                                                        |
+| §6.1.1 公式           | 第 6.1 章全部公式（LaTeX 统一）                          | **`docs/itc-c-formulas.md`**（含 f₀ 近似、温度因子、结构因子、色散、Lp、强度/峰形） |
 
-> **注意**：本仓库 PDF 为扫描版，`pdftotext` 只能提取目录/部分文本层。精确数值请以 IUCr 在线版
-> （`<https://www.iucr.org/resources/data>`）或 Gemmi `it92.hpp` 为准。
+> **注意**：本仓库 PDF 正文**可**用 pypdf 提取文本层，但该层是二维表
+> 线性化结果，存在**列粘连**（`6.9248.3748.751`=6.924/8.374/8.751）与
+> 页底 s 行交错两类缺陷——首版提取出 49 处单调性违例。故**逐值数据源**
+> 改用 Gemmi `it92.hpp`（ITC-1992 系数，权威机读镜像），PDF 仅作来源标注。
+> 详见 `docs/itc-c-table6113-extraction.md` §2。
 
 ### 2.2 其它可检索权威源（文献/字典）
 
@@ -145,7 +149,7 @@ t.resetAll()
 | 自定义/覆写某元素 f₀                 | srreal `setCustom*` 或 pdffit2 `set_scat`                       |
 | 反常色散 F′/F″                      | DiffPy 家族**均不覆盖** → 用 §3 在线工具或本项目 `FF.dat` |
 | 离子 f₀（本项目）                    | 只有 `Factor.dat`（199 物种含离子）覆盖                           |
-| 离子 F′/F″（开放项）                | **无任何现成开源库支持**，需手动从 Cromer–Mann 计算          |
+| 离子 F′/F″（开放项）                | **已实现**：`ion_dispersion.ts`（电荷偏移近似，无权威源，误差量化见 research doc §2.3）；`dispersion.ts` extended 模式 |
 
 ---
 
@@ -222,12 +226,17 @@ python3 scripts/cross_validate_ff.py --check-ce # 只查 Ce
 
 | # | 开放项                                   | 影响                                                 | 现状                            | 备注                                      |
 | - | ---------------------------------------- | ---------------------------------------------------- | ------------------------------- | ----------------------------------------- |
-| 1 | **离子 F′/F″ 缺失**              | 离子化合物（NaCl、BaTiO₃ 等）弱峰强度偏差最大 ~5.7% | 开放（P1）                      | 无现成库支持；需手动计算                  |
+| 1 | **离子 F′/F″ 缺失**              | 离子化合物（NaCl、BaTiO₃ 等）弱峰强度偏差最大 ~5.7% | **已实现 extended 模式（2026-10-16）**：`ion_dispersion.ts`（电荷偏移近似表，来源标注 `approximation`，误差边界 NaCl Na¹⁺ −8.9% / Cl⁻¹ +6.3%）；默认 fidelity 模式仍回退中性值 | 无权威离子 F′F″ 表，近似公式见 `docs/ion-and-cr-fe-data-research.md` §2.3 |
 | 2 | **Ce (Z=58) Cu Kα1 f′ 录入缺陷** | CeO₂ 等含 Ce 样品在 Cu Kα 下失真 ~1.4%             | 已确认，保持 byte-for-byte 保真 | 修正值 ≈−1.88（validation §3.2）       |
-| 3 | **Cr/Fe Kα 覆盖缺口**             | 选 Cr/Fe 靶时 f′=f″=0（置灰保真）                  | 开放（P1）                      | 用现代表补充将偏离保真                    |
+| 3 | **Cr/Fe Kα 覆盖缺口**             | 选 Cr/Fe 靶时 f′=f″=0（置灰保真）                  | **已实现 extended 模式（2026-10-16）**：`henke_dispersion.ts`（LBNL Henke f″ 权威来源，f′=0 近似并注明边界）；默认 fidelity 模式仍置灰 | 来源：LBNL CXRO Henke (Delmotte 2018)；详见 `docs/ion-and-cr-fe-data-research.md` §3.2 |
 | 4 | ~~Kα1/Kα2 双线是否叠加~~ | ~~Al(400)+2.51% 高角残差头号嫌疑~~ | **已定案（2026-10-16）**：legacy 只用 Kα1，证据见 `ff-dat-spec.md` §7.5（Al.xrd 99.94° 无 Kα2 卫星峰） | 开放项已关闭，可从清单移除 |
-| 5 | **PDF 数值层缺失**                 | 扫描版无文本层，精确系数无法自动提取                 | 需手工 / 走 IUCr 在线           | 不影响当前交付                            |
+| 5 | **PDF 逐值数值层缺陷**        | 扫描版文本层有列粘连+s 行交错（49 处单调性违例），不可作逐值源 | **已定案**：逐值改用 Gemmi `it92.hpp`（ITC-1992 系数），PDF 仅来源标注；提取物 `docs/itc-c-table6113.json`（113 离子物种×66 s 点） | 见 `docs/itc-c-table6113-extraction.md` §2；IUCr 在线表被 Cloudflare 拦截不可达 |
 | 6 | **cronie_data.ts 双份表冗余**      | 测试交叉验证已足后可删                               | 待确认测试覆盖                  | `intensity-uncertainty-review.md` §3.3 |
+
+> **`dispersion.ts` mode 说明**（2026-10-16 新增）：
+> - `mode='fidelity'`（默认）：仅用 `FF.dat`，Cr/Fe 置灰，离子回退中性。与 legacy GUI 逐字节一致，现有 136+ 测试全绿。
+> - `mode='extended'`：Cr/Fe → `HENKE_CRF`（LBNL Henke f″，f′=0）；离子物种 → `ION_DISPERSION`（电荷偏移近似）。`source` 字段区分来源（'FF.dat' / 'LBNL Henke' / 'approximation'），供 UI 标注或测试断言。
+> - 详见 `docs/ion-and-cr-fe-data-research.md` §4 数据管理方案。
 
 > **与 §6 交叉验证方案的对应**：
 > 开放项 2（Ce 缺陷）→ §6.2 矩阵已定案，§6.3 `cross_validate_ff.py` 复核确认；
