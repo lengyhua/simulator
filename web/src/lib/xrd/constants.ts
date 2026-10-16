@@ -87,6 +87,7 @@ export function createDefaultParams(): XrdParams {
     useThermal: true,
     usePeakShape: true,
     useAnomalous: DEFAULT_USE_DISPERSION,
+    dispersionMode: 'fidelity',
     rangeMin: SCAN_RANGE_MIN,
     rangeMax: SCAN_RANGE_MAX,
     step: SCAN_STEP,

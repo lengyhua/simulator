@@ -105,11 +105,14 @@ export function computeXRDPattern(crystal: Crystal, params: XrdParams): XRDPatte
 
   // Per-atom thermal factors come from the crystal itself (the .cord "B"
   // column); `useThermal` is only the on/off switch. The F′F″ correction is
-  // driven by `useAnomalous` (legacy GUI default: checkbox checked).
+  // driven by `useAnomalous` (legacy GUI default: checkbox checked). The data
+  // source (FF.dat fidelity vs. extended LBNL Henke + ion approximation) is
+  // driven by `dispersionMode` (default 'fidelity' = byte-for-byte legacy).
   const sfOpts = {
     lambda: params.lambda,
     useThermal: params.useThermal,
     useDispersion: params.useAnomalous,
+    dispersionMode: params.dispersionMode,
   };
 
   const candidates: HKLReflection[] = [];

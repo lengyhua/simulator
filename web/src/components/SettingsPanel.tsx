@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 
 import { LAMBDA_TABLE } from '@/lib/xrd/constants';
-import { hasDispersion } from '@/lib/xrd/dispersion';
+import { hasDispersion, hasDispersionExtended } from '@/lib/xrd/dispersion';
 import type { XrdParams } from '@/lib/xrd/types';
 import { useCrystalStore } from '@/store/crystal-store';
 
@@ -36,9 +36,11 @@ export function SettingsPanel() {
   const compute = useCrystalStore((state) => state.compute);
   const [drafts, setDrafts] = useState<Partial<Record<keyof XrdParams, string>>>({});
 
-  // F′F″ dispersion is only tabulated for Cu/Mo/Co Kα (FF.dat). Cr/Fe Kα have no
-  // data, so the checkbox is greyed out for those targets.
-  const dispersionSupported = hasDispersion(params.lambda);
+  // F′F″ dispersion is only tabulated for Cu/Mo/Co Kα in FF.dat (fidelity mode).
+  // In extended mode, Cr/Fe Kα are supported via LBNL Henke f″ (f′=0 approx);
+  // the checkbox stays enabled for those targets when mode='extended'.
+  const isExtended = params.dispersionMode === 'extended';
+  const dispersionSupported = isExtended ? hasDispersionExtended(params.lambda) : hasDispersion(params.lambda);
 
   /** Applies a param patch and recomputes right away when possible. */
   const apply = useCallback(
@@ -160,6 +162,40 @@ export function SettingsPanel() {
               F′F″（异常散射）
             </span>
           </label>
+        </div>
+
+        {/* F′F″ data source: fidelity (FF.dat only) vs extended (Henke + ion approx) */}
+        <div className="field-group" style={{ marginTop: '0.5rem' }}>
+          <span className="checkbox-group-label">F′F″ 数据来源</span>
+          <div className="checkbox-row">
+            <label className="checkbox-label">
+              <input
+                type="radio"
+                name="dispersion-mode"
+                checked={params.dispersionMode === 'fidelity'}
+                onChange={() => apply({ dispersionMode: 'fidelity' })}
+              />
+              保真（FF.dat，与 CalcXRD 一致）
+            </label>
+            <label
+              className="checkbox-label"
+              title="Cr/Fe 靶使用 LBNL Henke f″ 权威值（f′=0 近似）；离子物种使用电荷偏移近似（误差 ~6%）。结果偏离 CalcXRD 原始行为。"
+            >
+              <input
+                type="radio"
+                name="dispersion-mode"
+                checked={params.dispersionMode === 'extended'}
+                onChange={() => apply({ dispersionMode: 'extended' })}
+              />
+              增强（+Cr/Fe +离子，含近似值）
+            </label>
+          </div>
+          {params.dispersionMode === 'extended' ? (
+            <p className="text-faint" style={{ margin: '0.25rem 0 0' }}>
+              ⚠ 增强模式：Cr/Fe f″ 来自 LBNL Henke（权威），f′=0（近似）；
+              离子 f″ 为电荷缩放近似（±6%）。非权威数据，适合定性参考，不建议定量分析。
+            </p>
+          ) : null}
         </div>
         <p className="text-faint thermal-hint">
           温度因子 B 为逐原子参数（原子表「B (Å²)」列，默认 1）；此处 Thermal

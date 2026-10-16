@@ -53,6 +53,14 @@ export interface SFOptions {
    * original (h,k,l) yields bit-identical results to recomputing it for `rep`.
    */
   s?: number;
+  /**
+   * F′/F″ dispersion data source (used only when `useDispersion` is true):
+   * - `'fidelity'` (default): FF.dat only, byte-for-byte legacy behavior.
+   * - `'extended'`: adds Cr/Fe via LBNL Henke f″ (f′=0 approx) and ion species
+   *   via charge-scaled F′/F″ approximation. Deviates from legacy; see
+   *   docs/ion-and-cr-fe-data-research.md §3 for source citations.
+   */
+  dispersionMode?: 'fidelity' | 'extended';
 }
 
 /** A complex structure factor in Cartesian form. */
@@ -179,10 +187,17 @@ export function structureFactor(
     // Debye–Waller is per atom: exp(−Bⱼ·sin²θ/λ²), Bⱼ from the .cord atom row.
     // It attenuates only f₀, NOT the anomalous f′/f″ constants (IT Vol. C).
     const f0s = f0(atom.element, s) * (opts.useThermal ? Math.exp(-atom.thermalB * s * s) : 1);
-    // Anomalous dispersion: F′F″ from FF.dat, indexed by Z (not symbol — Z=91
-    // is mislabeled "Po" in the source). Unsupported element/λ → 0 (no-op).
-    const fp = opts.useDispersion ? getDispersion(atom.element, opts.lambda).fPrime : 0;
-    const fpp = opts.useDispersion ? getDispersion(atom.element, opts.lambda).fDoublePrime : 0;
+    const mode = opts.dispersionMode ?? 'fidelity';
+    // Anomalous dispersion: F′F″ from FF.dat (fidelity) or extended sources
+    // (LBNL Henke for Cr/Fe, charge-scaled approximation for ions), indexed by
+    // Z (not symbol — Z=91 is mislabeled "Po" in the source).
+    // Unsupported element/λ → 0 (no-op).
+    const fp = opts.useDispersion
+      ? getDispersion(atom.element, opts.lambda, mode).fPrime
+      : 0;
+    const fpp = opts.useDispersion
+      ? getDispersion(atom.element, opts.lambda, mode).fDoublePrime
+      : 0;
     // Complex atomic factor: (f0s + f′) + i·f″. Multiply by e^{iφ} = (cosφ + i sinφ):
     //   Re = A·cosφ − B·sinφ,  Im = A·sinφ + B·cosφ
     // where A = occ·(f0s + f′) and B = occ·f″. Both real & imaginary parts of

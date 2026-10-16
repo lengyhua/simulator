@@ -106,7 +106,7 @@ export interface XrdParams {
   /** true = Gaussian broadening; false = delta stick spectrum. */
   usePeakShape: boolean;
   /**
-   * F′F″ anomalous-dispersion correction on/off. Checked by default to match
+   * F′/F″ anomalous-dispersion correction on/off. Checked by default to match
    * the legacy program's default UI state. When true, the correction is
    * applied inside {@link structureFactor} via `SFOptions.useDispersion`
    * (wired in `pipeline.ts`), reading F′/F″ from the FF.dat table
@@ -114,6 +114,16 @@ export interface XrdParams {
    * a no-op with f′ = f″ = 0.
    */
   useAnomalous: boolean;
+  /**
+   * Dispersion data source for the F′/F″ correction (only used when
+   * `useAnomalous` is true):
+   * - `'fidelity'` (default): FF.dat only — byte-for-byte legacy behavior;
+   *   Cr/Fe Kα unsupported (greyed), ions fall back to neutral FF.dat values.
+   * - `'extended'`: adds Cr/Fe via LBNL Henke f″ (f′=0 documented approx)
+   *   and ion species via charge-scaled F′/F″ approximation (±6% error).
+   *   Deviates from legacy; label results accordingly.
+   */
+  dispersionMode: 'fidelity' | 'extended';
   /** Scan range in degrees. */
   rangeMin: number;
   rangeMax: number;
