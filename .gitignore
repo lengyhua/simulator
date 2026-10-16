@@ -32,3 +32,9 @@ server/.omc/
 
 # 交叉验证脚本中间产物
 scripts/tmp/
+
+# OMC agent session-state junk (.omo/run-continuation/ etc.)
+.omo/
+server/CalcXRD.exe~
+server/smoke-pid.txt
+web/tmp_al_check.mjs
