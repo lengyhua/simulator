@@ -4,6 +4,10 @@
 > 日期：2026-10-16
 > 范围：`web/src/lib/xrd/` 全部物理公式与参数（只读审计，未修改任何代码/文档）
 > 审计方法：逐文件源码精读 + 行号级物理依据比对 + 134 项现有测试套件复核 + 与 `docs/params-dispersion.md`（原 ff-dat-spec） / `scripts/extract_ff_dat.py` 交叉验证
+>
+> ⚠ 2026-10-17 复核脚注：本文「134 项」为当日快照；**当日实跑 `npm test` =
+> 11 文件 / 155 项全过**（见 `docs/DATA-REFERENCE.md` §4 #16、§6 R6）。
+> 本文正文数字按历史快照保留，不回溯改写。
 
 ---
 
@@ -200,9 +204,11 @@
 ## 6. 复核命令
 
 ```bash
-# 1. 物理测试套件（134 项全过）
+# 1. 物理测试套件（写作当日 134 项全过）
+# ⚠ 2026-10-17 复核：现为 11 文件 / 155 项全过（见 DATA-REFERENCE §6 R6）
 "$NODE" node_modules/vitest/vitest.mjs run
-# → Test Files  9 passed / Tests  134 passed
+# → 2026-10-16: Test Files  9 passed / Tests  134 passed
+# → 2026-10-17: Test Files 11 passed / Tests 155 passed
 
 # 2. 复核 Ce 可疑值确为 FF.dat 原始字节
 python - <<'PY'

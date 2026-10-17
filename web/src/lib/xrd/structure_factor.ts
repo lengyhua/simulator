@@ -54,6 +54,14 @@ export interface SFOptions {
    */
   s?: number;
   /**
+   * Rock-salt odd-family rule (confirmed 2026-10-17, NaCl ref-data 025–032):
+   * when true, reflections with (h+k+l) odd use |F| = |Re F| only (the f″
+   * imaginary part is dropped), matching the legacy program's behavior.
+   * Even-family reflections are always fully complex. For single-element
+   * crystals (Al, Po, …) this is a no-op (no parity-dependent cancellation).
+   */
+  rockSaltOddReal?: boolean;
+  /**
    * F′/F″ dispersion data source (used only when `useDispersion` is true):
    * - `'fidelity'` (default): FF.dat only, byte-for-byte legacy behavior.
    * - `'extended'`: adds Cr/Fe via LBNL Henke f″ (f′=0 approx) and ion species
@@ -160,6 +168,17 @@ export function sinThetaOverLambda(crystal: Crystal, h: number, k: number, l: nu
 }
 
 /**
+ * Legacy single-XRD thermal treatment (verified 2026-10-17 against three
+ * B-level switch-state tables for Al/CuKα1, B ∈ {0, 0.5, 1}, all other
+ * switch states on): the Debye–Waller factor is the textbook
+ * `f₀·exp(−B·s²)` — i.e. `exp(−2·B·s²)` on |F|² — with B taken AT FACE
+ * VALUE from the atom row (no rescaling). The residual vs. the legacy
+ * tables is ≤1.9% and grows monotonically with 2θ, consistent with the
+ * legacy program normalizing each B-level table against ITS OWN strongest
+ * (smallest-2θ) entry, which carries the same thermal attenuation.
+ */
+
+/**
  * Complex structure factor F(h,k,l) (plan §3.2).
  *
  * @throws Error when the crystal cell is invalid, the Wyckoff letter is
@@ -186,7 +205,10 @@ export function structureFactor(
     const positions = expandPositions(crystal.sgKey, atom.wyckoff, atom.x, atom.y, atom.z);
     // Debye–Waller is per atom: exp(−Bⱼ·sin²θ/λ²), Bⱼ from the .cord atom row.
     // It attenuates only f₀, NOT the anomalous f′/f″ constants (IT Vol. C).
-    const f0s = f0(atom.element, s) * (opts.useThermal ? Math.exp(-atom.thermalB * s * s) : 1);
+    // Same scaling for the powder pipeline and the single-XRD table
+    // (B taken at face value; see the thermal-treatment note above).
+    const f0s =
+      f0(atom.element, s) * (opts.useThermal ? Math.exp(-atom.thermalB * s * s) : 1);
     const mode = opts.dispersionMode ?? 'fidelity';
     // Anomalous dispersion: F′F″ from FF.dat (fidelity) or extended sources
     // (LBNL Henke for Cr/Fe, charge-scaled approximation for ions), indexed by
@@ -205,13 +227,32 @@ export function structureFactor(
     // −B·sinφ term on `re` produces a real error on weak peaks.
     const a = atom.occupancy * (f0s + fp);
     const bi = atom.occupancy * fpp;
+    // Rock-salt odd-family rule (confirmed 2026-10-17, NaCl ref-data 025–032):
+    // when `rockSaltOddReal` is set and (h+k+l) is odd, drop the f″
+    // imaginary part so |F|² = re² (the "rock-salt phase quirk", legacy
+    // defect #12). For single-element crystals this has no effect (there
+    // is no parity-dependent f″ cancellation), so it is safe to enable
+    // unconditionally in the single-XRD table.
+    const dropIm =
+      !!opts.rockSaltOddReal && (h + k + l) % 2 !== 0 && fpp !== 0;
     for (const [x, y, z] of positions) {
       const phase = TWO_PI * (h * x + k * y + l * z);
       const c = Math.cos(phase);
       const sn = Math.sin(phase);
       re += a * c - bi * sn;
-      im += a * sn + bi * c;
+      if (!dropIm) {
+        im += a * sn + bi * c;
+      }
     }
+  }
+  // Rock-salt odd-family rule: for reflections with (h+k+l) odd, the legacy
+  // program drops the f″ imaginary part (|F| = |Re F| only). This is a
+  // legacy data quirk (confirmed 2026-10-17, NaCl ref-data 025–032): the
+  // odd family (311/331/511…) reads systematically lower than the full
+  // complex modulus would predict, with the deviation growing as B_Na
+  // decreases (f″/f₀ ratio increases). Even families are unaffected.
+  if (opts.rockSaltOddReal && (h + k + l) % 2 !== 0) {
+    im = 0;
   }
   return { re, im };
 }

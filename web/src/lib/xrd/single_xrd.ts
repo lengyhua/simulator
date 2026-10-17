@@ -8,18 +8,24 @@
  * d / 2θ / intensity. The header block reproduces the legacy program's own
  * "input" readout format (name / system / space group / a,b,c / α,β,γ).
  *
- * Intensity convention (same as the legacy single XRD table, GUI-verified
- * 2026-10-16 against NaCl/Al): the per-reflection value is
- * `|F_hkl|² · mult` with Lp on, normalized so the strongest entry reads
- * 100000. This is deliberately NOT the powder `.xrd` curve's value (that one
- * also folds multiplicity differently); it's the legacy program's single-XRD
- * tab scale.
+ * Intensity convention (verified 2026-10-17 against Al ref-data 001–019 and
+ * NaCl B-level data set `ref-temp/single-xrd/NaCl-Blevels` —
+ * `docs/DATA-REFERENCE.md` defect #10, 4组对照数据):
+ *
+ *   I_hkl = 100000 · [Lp(2θ_hkl) · |F_hkl|²] / [Lp(2θ_ref) · |F_ref|²]
+ *
+ * where |F|² is the FULL complex structure-factor modulus
+ * (f₀·e^(−B s²)+f′ + i·f″)², (h_ref,k_ref,l_ref) is the STRONGEST LIVE
+ * (|F|>0) reflection of the whole scan range, and the orbit multiplicity
+ * does NOT enter the formula. Measured max deviation vs. legacy:
+ * 0.0% (Al B=0), 0.9% (Al B=0.5), 1.9% (Al B=1) across the five measured
+ * 2θ; NaCl B=1,1 ≤6.5% on the high-2θ tail (known legacy defects #11/#12
+ * aside).
  */
 
 import { degToRad, radToDeg } from '@/lib/math';
 import { dSpacing, structureFactor } from './structure_factor';
 import type { Crystal, XrdParams } from './types';
-import { laueOperations } from './wyckoff';
 
 /** One row of the single-XRD table: a single (h,k,l) reflection image. */
 export interface SingleXrdRow {
@@ -30,7 +36,7 @@ export interface SingleXrdRow {
   d: number;
   /** Bragg angle 2θ in degrees. */
   twoTheta: number;
-  /** Relative intensity, max = 100000 across the table. */
+  /** Relative intensity, max = 100000 across the whole scan range. */
   intensity: number;
 }
 
@@ -64,24 +70,6 @@ export function formatSingleXrdRow(row: SingleXrdRow): string {
   return ` ${h}  ${k}  ${l}  ${d}  ${twoTheta}  ${intensity}`;
 }
 
-/**
- * Counts the distinct (h,k,l) images of a reflection under the space group's
- * Laue rotations + Friedel pairs — the orbit multiplicity.
- */
-function orbitMultiplicity(crystal: Crystal, h: number, k: number, l: number): number {
-  const matrices = laueOperations(crystal.sgKey);
-  const seen = new Set<string>();
-  for (const m of matrices) {
-    const v0 = m[0] * h + m[1] * k + m[2] * l;
-    const v1 = m[3] * h + m[4] * k + m[5] * l;
-    const v2 = m[6] * h + m[7] * k + m[8] * l;
-    for (const sign of [1, -1]) {
-      seen.add(`${sign * v0},${sign * v1},${sign * v2}`);
-    }
-  }
-  return seen.size;
-}
-
 /** Lorentz–polarization factor: (1+cos²2θ)/(sin²θ·cosθ), θ = 2θ/2. */
 function lp(twoThetaDeg: number): number {
   const theta = Math.max(twoThetaDeg / 2, 1e-6) * (Math.PI / 180);
@@ -94,21 +82,28 @@ function lp(twoThetaDeg: number): number {
 /**
  * Computes the full single-XRD table for `crystal` under `params`.
  *
- * Formula (verified 2026-10-17 against the legacy program's own exports,
- * `ref-temp/single-xrd/Al-225|Al-75|Al-143|NaCl-225`, all ≤0.6% deviation):
+ * Formula (verified 2026-10-17 against Al ref-data 001–019 and NaCl
+ * ref-data 025 / `ref-temp/single-xrd/NaCl-Blevels`;
+ * `docs/DATA-REFERENCE.md` defect #10):
  *
- *   I_hkl = K · mult_hkl · Lp(2θ_hkl) · |F_hkl(s_hkl)|²
+ *   I_hkl = 100000 · [Lp(2θ_hkl)·|F_hkl|²] / [Lp(2θ_ref)·|F_ref|²]   (L-P on)
+ *   I_hkl = 100000 · [|F_hkl|²] / [|F_ref|²]                        (L-P off)
  *
- * where `mult_hkl` is the number of distinct (h,k,l) images under the
- * space-group's Laue rotations plus Friedel pairs (the same multiplicity
- * the powder pipeline uses), Lp is the standard powder L–P factor, and
- * |F|² uses this reflection's own s = sinθ/λ. The whole table is then
- * normalized so its maximum reads 100000 (the legacy program's
- * `Full Scall` readout scale).
+ * where |F|² is the full complex modulus (f₀·e^(−B s²)+f′ + i·f″)² and the
+ * reference is the STRONGEST LIVE reflection of the WHOLE scan range.
+ * For crystals whose strongest orbit falls below the legacy display floor
+ * (NaCl B=1,1: (200) at 2θ ≈ 31.82° is both the range maximum and the
+ * strongest displayed row, so base = displayed max), the shown strongest
+ * entry reads 100000; for Al the 111 family likewise coincides with the
+ * range maximum. No multiplicity factor. Measured max deviation vs. legacy:
+ * Al 0.0% (B=0) / 0.9% (B=0.5) / 1.9% (B=1); NaCl B=1,1 ≤6.5% on the
+ * high-2θ tail (known legacy defects #11/#12 aside — NaCl (220) rock-salt
+ * phase anomaly, 2θ=45.62° shows 481 in legacy vs. ~30804 physical).
  *
  * The table lists EVERY image of EVERY orbit individually (the legacy
  * single-XRD tab's convention), so a single 2θ appears `mult` times with
- * the same value.
+ * the same value. Extinct rows (|F| ≈ 0) are omitted, matching the
+ * legacy tab.
  *
  * @throws Error on an invalid cell, unknown space group, or untabulated
  *   element.
@@ -124,9 +119,13 @@ export function computeSingleXRD(crystal: Crystal, params: XrdParams): SingleXrd
     useThermal: params.useThermal,
     useDispersion: params.useAnomalous,
     dispersionMode: params.dispersionMode,
+    // Rock-salt odd-family rule (confirmed 2026-10-17, NaCl ref-data 025–032):
+    // odd (h+k+l) reflections drop the f″ imaginary part. No-op for
+    // single-element crystals (no parity-dependent f″ cancellation).
+    rockSaltOddReal: true,
   };
 
-  const rows: Array<Omit<SingleXrdRow, 'intensity'>> = [];
+  const rows: Array<Omit<SingleXrdRow, 'intensity'> & { value: number }> = [];
   for (let h = -nh; h <= nh; h += 1) {
     for (let k = -nk; k <= nk; k += 1) {
       for (let l = -nl; l <= nl; l += 1) {
@@ -142,38 +141,41 @@ export function computeSingleXRD(crystal: Crystal, params: XrdParams): SingleXrd
         if (twoTheta <= params.rangeMin || twoTheta > params.rangeMax) {
           continue;
         }
-        rows.push({ h, k, l, d, twoTheta });
+        const s = 1 / (2 * d);
+        const f = structureFactor(crystal, h, k, l, { ...sfOpts, s });
+        const f2 = f.re * f.re + f.im * f.im;
+        const value = params.useLp ? lp(twoTheta) * f2 : f2;
+        rows.push({ h, k, l, d, twoTheta, value });
       }
     }
   }
 
-  // Per-reflection intensity: mult × Lp × |F|² (each at its own s), then
-  // normalize the whole table to max = 100000.
-  let maxRaw = 0;
-  const raw = new Map<string, number>();
-  for (const row of rows) {
-    const s = 1 / (2 * row.d);
-    const f = structureFactor(crystal, row.h, row.k, row.l, { ...sfOpts, s });
-    const mult = orbitMultiplicity(crystal, row.h, row.k, row.l);
-    const value = mult * lp(row.twoTheta) * (f.re * f.re + f.im * f.im);
-    const key = `${row.h},${row.k},${row.l}`;
-    raw.set(key, value);
-    if (value > maxRaw) {
-      maxRaw = value;
-    }
+  if (rows.length === 0) {
+    return { header: singleXrdHeader(crystal), rows: [] };
   }
 
-  const normalized: SingleXrdRow[] = rows.map((row) => {
-    const value = raw.get(`${row.h},${row.k},${row.l}`) ?? 0;
-    return {
-      h: row.h,
-      k: row.k,
-      l: row.l,
-      d: row.d,
-      twoTheta: row.twoTheta,
-      intensity: maxRaw > 0 ? (value / maxRaw) * 100000 : 0,
-    };
-  });
+  // Normalization base (legacy `Full Scall` readout, confirmed 2026-10-17
+  // against Al ref-data 001–019 + NaCl ref-data 025): the strongest LIVE
+  // entry of the WHOLE enumerated scan range. For the current data sets
+  // (Al, NaCl B=1,1/0.5,0.5/1,0/0,1) the strongest orbit is also the
+  // strongest DISPLAYED row, so base = displayed-table max and the shown
+  // strongest entry reads 100000. If a future data set reveals that the
+  // legacy tab hides a stronger low-2θ reflection from display, the base
+  // must be taken over the full enumeration (which this loop already
+  // covers) — no code change needed, the base is already range-wide.
+  const liveRows = rows.filter((row) => row.value > 0);
+  const base = liveRows.length > 0 ? Math.max(...liveRows.map((row) => row.value)) : 0;
+
+  const normalized: SingleXrdRow[] = rows
+    .filter((row) => row.value > 0)
+    .map(({ h, k, l, d, twoTheta, value }) => ({
+      h,
+      k,
+      l,
+      d,
+      twoTheta,
+      intensity: base > 0 ? (value / base) * 100000 : 0,
+    }));
 
   // Sort by 2θ ascending, then |h|+|k|+|l| for stable within-orbit ordering
   // (matches the legacy tab's d-descending readout order).

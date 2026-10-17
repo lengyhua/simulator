@@ -15,7 +15,7 @@ CalcXRD 是 Delphi 7 闭源 `CalcXRD.exe` 的 Web 重实现（React18+Vite+TS，
 已完成的工作（截至本评审）：
 - **公式分析（高见远）**：`docs/audits/physics-audit.md` 对 11 个物理模块逐文件审计，结论"全部正确，0 致命/0 显著/3 轻微"。
 - **FF.dat 解码（高见远）**：`docs/params-dispersion.md`（原 ff-dat-spec） 完全解析 92×104 字节布局、6 组交错 (f′,f″) 列、波长身份、Z=91 误标等。
-- **引擎实现与测试**：`structure_factor / intensity / lorentz / gaussian / pipeline / dispersion / wyckoff / cronie` 等模块落地，134 项测试 + Al/NaCl 六峰/九峰 GUI 基线验收通过。
+- **引擎实现与测试**：`structure_factor / intensity / lorentz / gaussian / pipeline / dispersion / wyckoff / cronie` 等模块落地，134 项测试 + Al/NaCl 六峰/九峰 GUI 基线验收通过。⚠ 2026-10-17 复核：现为 **11 文件 / 155 项**全过（见 `docs/DATA-REFERENCE.md` §4 #16 / §6 R6）。
 - 物理口径已 GUI 实测锁定：`q=0.10`（σ，非 FWHM）、逐原子 B 默认 1、四复选框默认全开、无全局 B。
 
 **一句话定位**：引擎对 legacy 的**保真度已很高**；强度公式链"正确"结论成立（保真口径）。本评审要补充的，是这套"正确"背后**真正的强度不确定性**——它们不影响 Al/NaCl 交付，但会在新样本/新靶/离子化合物上暴露。

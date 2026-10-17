@@ -143,6 +143,13 @@ evidence in `docs/audits/ff-dat-validation.md`). Known defects: Z=91 name is
 mislabelled `Po` (must index by Z, not symbol); Ce (Z=58) Cu Kα1 f′ = −1.087
 is a confirmed data-entry defect (kept faithful).
 
+### `ref-data/` — 定位 XRD 参数的参考数据（人添）
+
+存放本项目**人工添加**的参考数据（原程序输出记录、对照表、抄录系数等），
+用于辅助定案当前重实现的 XRD 计算参数。按用途分子目录（如 `single-xrd/`），
+组织与登记约定见 `ref-data/README.md`。与根目录 `.dat`（原程序输入数据源，不动）、
+`docs/data/*.csv`（解码镜像）、`references/`（外部权威源）边界明确。
+
 ### `help` — embedded RTF help document
 
 RTF file (not plain text). Contains the full list of formulas the program implements:

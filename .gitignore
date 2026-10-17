@@ -38,3 +38,6 @@ scripts/tmp/
 server/CalcXRD.exe~
 server/smoke-pid.txt
 web/tmp_al_check.mjs
+.ghidra-out/
+.ghidra-workspace/
+.ghidra/
