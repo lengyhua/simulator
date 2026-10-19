@@ -1,27 +1,46 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { syncDrafts } from '@/lib/draft-sync';
+import { elementSymbols } from '@/lib/xrd/cronie';
+import { listSites } from '@/lib/xrd/wyckoff';
 import { useCrystalStore } from '@/store/crystal-store';
-import type { Atom } from '@/lib/xrd/types';
+import type { Atom, WyckoffSite } from '@/lib/xrd/types';
 
-/** Numeric atom fields rendered as `type="number"` inputs. */
+/** Numeric atom fields rendered as `type="number"` inputs (draft-backed). */
 const ATOM_NUMBER_FIELDS: ReadonlyArray<keyof Atom> = ['x', 'y', 'z', 'occupancy', 'thermalB'];
 
-/** All editable atom fields (draft bookkeeping order). */
-const ATOM_FIELDS: ReadonlyArray<keyof Atom> = [
-  'element',
-  'wyckoff',
-  ...ATOM_NUMBER_FIELDS,
-];
+/** Placeholder shown for a freshly added atom whose element is still blank. */
+const ELEMENT_PLACEHOLDER = '（请选择）';
 
 /** Draft key for one cell: `rowIndex:field`. */
 type CellKey = string;
+
+/**
+ * Tooltip for a Wyckoff cell: the multiplicity and site symmetry of the
+ * selected letter (the letter alone is too terse to pick sensibly by).
+ */
+function wyckoffSiteTitle(sites: readonly WyckoffSite[], letter: string): string {
+  const site = sites.find((candidate) => candidate.letter === letter);
+  return site
+    ? `Wyckoff ${site.letter}：多重度 ${site.mult}，位点对称性 ${site.symm}`
+    : `Wyckoff ${letter}（当前空间群无匹配位点）`;
+}
 
 /**
  * Atom table editor (plan §5-T09): one row per atom with element / Wyckoff
  * letter / fractional coordinates / occupancy / thermal factor B, plus add
  * and remove actions — all bound to the crystal store. B is per atom (the
  * .cord 7th field, the legacy program's "B" column, default 1).
+ *
+ * Element and Wyckoff are **dropdowns**, not free text (2026-10-19):
+ *   - Element = the Factor.dat species table (199 entries incl. ions), the
+ *     same list the legacy program's element dropdown offers
+ *     (docs/params-f0.md §1.1).
+ *   - Wyckoff = the letters of the CURRENT space group. The letter is
+ *     load-bearing, not decoration: `structure_factor.ts` calls
+ *     `expandPositions(sgKey, letter, x, y, z)` to build the site's symmetry
+ *     equivalents, so a letter the group does not have would break the
+ *     intensity pipeline — constraining it to real letters prevents that.
  *
  * Validation lives in the store (`updateAtom` merges and checks the atom);
  * the component only guards against intermediate numeric drafts reaching the
@@ -48,7 +67,7 @@ export function AtomTable() {
       const next: Partial<Record<string, string>> = {};
       for (let index = 0; index < crystal.atoms.length; index += 1) {
         const rowDrafts: Record<string, string> = {};
-        for (const field of ATOM_FIELDS) {
+        for (const field of ATOM_NUMBER_FIELDS) {
           const draft = prev[`${index}:${field}`];
           if (draft !== undefined) {
             rowDrafts[field] = draft;
@@ -79,14 +98,24 @@ export function AtomTable() {
     [updateAtom],
   );
 
-  const handleTextCell = useCallback(
-    (index: number, field: keyof Atom, raw: string) => {
-      const key: CellKey = `${index}:${field}`;
-      setDrafts((prev) => ({ ...prev, [key]: raw }));
-      updateAtom(index, { [field]: raw } as Partial<Atom>);
+  /**
+   * Element / Wyckoff cells are dropdowns, so the picked value is always a
+   * complete valid token and goes straight to the store. Draft bookkeeping
+   * exists only for the numeric cells, which can hold an intermediate
+   * unparseable state such as `"0."` while the user types.
+   */
+  const handleSelectCell = useCallback(
+    (index: number, field: keyof Atom, value: string) => {
+      updateAtom(index, { [field]: value } as Partial<Atom>);
     },
     [updateAtom],
   );
+
+  // Element options = the Factor.dat species table (199 entries incl. ions);
+  // Wyckoff options = the letters of the crystal's CURRENT space group.
+  const speciesOptions = useMemo(() => elementSymbols(), []);
+  const sgKey = crystal?.sgKey;
+  const wyckoffSites = useMemo(() => (sgKey ? listSites(sgKey) : []), [sgKey]);
 
   if (!crystal) {
     return (
@@ -124,26 +153,48 @@ export function AtomTable() {
             </tr>
           </thead>
           <tbody>
-            {crystal.atoms.map((_atom, index) => (
+            {crystal.atoms.map((atom, index) => (
               <tr key={index}>
                 <td className="mono">{index + 1}</td>
                 <td>
-                  <input
-                    type="text"
-                    className="cell-input"
+                  <select
+                    className="cell-select"
                     aria-label={`第 ${index + 1} 个原子的元素符号`}
-                    value={cellValue(index, 'element')}
-                    onChange={(event) => handleTextCell(index, 'element', event.target.value)}
-                  />
+                    value={atom.element}
+                    onChange={(event) => handleSelectCell(index, 'element', event.target.value)}
+                  >
+                    {atom.element === '' ? (
+                      <option value="">{ELEMENT_PLACEHOLDER}</option>
+                    ) : null}
+                    {/* A .cord may carry a symbol outside Factor.dat — keep it
+                        selectable so the dropdown never silently rewrites it. */}
+                    {atom.element !== '' && !speciesOptions.includes(atom.element) ? (
+                      <option value={atom.element}>{atom.element}</option>
+                    ) : null}
+                    {speciesOptions.map((symbol) => (
+                      <option key={symbol} value={symbol}>
+                        {symbol}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td>
-                  <input
-                    type="text"
-                    className="cell-input cell-input-narrow"
+                  <select
+                    className="cell-select cell-select-narrow"
                     aria-label={`第 ${index + 1} 个原子的 Wyckoff 位`}
-                    value={cellValue(index, 'wyckoff')}
-                    onChange={(event) => handleTextCell(index, 'wyckoff', event.target.value)}
-                  />
+                    title={wyckoffSiteTitle(wyckoffSites, atom.wyckoff)}
+                    value={atom.wyckoff}
+                    onChange={(event) => handleSelectCell(index, 'wyckoff', event.target.value)}
+                  >
+                    {atom.wyckoff !== '' && !wyckoffSites.some((site) => site.letter === atom.wyckoff) ? (
+                      <option value={atom.wyckoff}>{atom.wyckoff}</option>
+                    ) : null}
+                    {wyckoffSites.map((site) => (
+                      <option key={site.letter} value={site.letter}>
+                        {site.letter}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 {ATOM_NUMBER_FIELDS.map((field) => (
                   <td key={field}>

@@ -420,6 +420,39 @@ button:disabled, .btn:disabled, .btn-disabled {
   max-width: 64px;
 }
 
+/* 原子表下拉（元素 / Wyckoff 位，2026-10-19）：比单元格输入更窄，
+   箭头贴右以便短字母（a/b/c…）仍完整可见。 */
+.cell-select {
+  width: 100%;
+  min-width: 64px;
+  box-sizing: border-box;
+  background-color: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239BA3C2' d='M6 8L2 4h8L6 8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  border: 1px solid var(--border-soft);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 4px 18px 4px 6px;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.cell-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.cell-select-narrow {
+  min-width: 48px;
+  max-width: 68px;
+}
+
 .btn-danger-cell {
   padding: 5px 10px;
   font-size: 12px;
@@ -686,6 +719,33 @@ button:disabled, .btn:disabled, .btn-disabled {
 .search-factor-table-wrap td,
 .search-factor-table-wrap th {
   white-space: nowrap;
+}
+
+/* Search Factor 系数表（7 列 × 2 行，对照原程序 TFormFactor 的 (aᵢ bᵢ) 竖对
+   布局，docs/params-f0.md §1.1）与 f₀(2θ) 曲线容器（2026-10-19）。 */
+.coef-table-wrap {
+  overflow-x: auto;
+}
+
+.coef-table th,
+.coef-table td {
+  white-space: nowrap;
+  text-align: right;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.search-factor-chart {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 6px 4px 0;
+}
+
+.search-factor-summary,
+.search-factor-meta {
+  margin: 0;
+  font-size: 12px;
 }
 
 /* Wyckoff */

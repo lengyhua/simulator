@@ -228,3 +228,62 @@ export function computeSearchFactor(
     rows,
   };
 }
+
+/** Maxima of the two Search Factor series over the computed 2θ window — the
+ *  legacy dialog's `Max Fo` / `Max Fo (F1 F2)` readouts (docs/params-f0.md
+ *  §1.1: for H @ MoKa1 the legacy shows `Max Fo = 0.999978 = Σa+c = f₀(0)`;
+ *  f₀ decreases monotonically with s, so the window maximum sits at 2θ min). */
+export function searchFactorMaxima(
+  result: SearchFactorResult,
+): { maxFo: number; maxFoEff: number } | null {
+  if (result.rows.length === 0) {
+    return null;
+  }
+  let maxFo = -Infinity;
+  let maxFoEff = -Infinity;
+  for (const row of result.rows) {
+    if (row.f0 > maxFo) {
+      maxFo = row.f0;
+    }
+    if (row.fEff > maxFoEff) {
+      maxFoEff = row.fEff;
+    }
+  }
+  return { maxFo, maxFoEff };
+}
+
+/**
+ * Renders the Search Factor dialog's report text — the layout the legacy
+ * program writes (`ref-data/factors/007-Na+.rtf`): element/target header,
+ * the a/b/c coefficient block, ΔF1/ΔF2, the Max Fo readouts, then the
+ * `2theta / sin(theta)/lamda / Fo / Fo after F1 & F2` value table.
+ *
+ * ⚠ One deliberate deviation from the legacy file: the original labels EVERY
+ * b as `b1` (`a1=…; b1=…` repeated five times — a display bug in the
+ * generated report). We emit the correct b₁..b₅ labels; the VALUES are
+ * untouched, so any numeric comparison still matches.
+ */
+export function formatSearchFactorReport(result: SearchFactorResult): string {
+  const maxima = searchFactorMaxima(result);
+  const lines: string[] = [];
+  lines.push(`Element Name :  ${result.species}`);
+  lines.push(`Target : ${result.radiation}  ${result.lambda}`);
+  for (let i = 0; i < 5; i += 1) {
+    lines.push(`a${i + 1}=  ${result.a[i]};   b${i + 1}= ${result.b[i]}`);
+  }
+  lines.push(`c=  ${result.c}`);
+  lines.push(`DeltaF1 =  ${result.deltaF1};   DeltaF2= ${result.deltaF2}`);
+  if (maxima) {
+    lines.push(
+      `Max Fo = ${maxima.maxFo.toFixed(6)};   Max Fo (F1 F2) = ${maxima.maxFoEff.toFixed(6)}`,
+    );
+  }
+  lines.push(' 2theta degree    sin(theta)/lamda         Fo               Fo after F1 & F2');
+  for (const row of result.rows) {
+    lines.push(
+      `${row.twoTheta.toFixed(2).padStart(8)}${row.s.toFixed(8).padStart(18)}` +
+        `${row.f0.toFixed(9).padStart(21)}${row.fEff.toFixed(9).padStart(21)}`,
+    );
+  }
+  return lines.join('\n');
+}

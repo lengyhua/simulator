@@ -10,6 +10,8 @@ import {
   hasElement,
   normalizeElement,
   computeSearchFactor,
+  formatSearchFactorReport,
+  searchFactorMaxima,
 } from './cronie';
 
 /** Atomic numbers for the 92 neutral elements H–U (table self-check). */
@@ -164,6 +166,48 @@ describe('computeSearchFactor — legacy Search Factor 对话框（§8.19/§8.20
     for (let i = 1; i < result.rows.length; i += 1) {
       expect(result.rows[i].twoTheta).toBeGreaterThan(result.rows[i - 1].twoTheta - 1e-9);
     }
+  });
+});
+
+describe('searchFactorMaxima / formatSearchFactorReport — 曲线 Max 读数与导出报表（2026-10-19）', () => {
+  it('Max Fo = 窗口内 f₀ 最大值 = 首行（f₀ 随 2θ 单调下降）', () => {
+    const result = computeSearchFactor('Al', 'CuKa1', 3, 100, 0.5);
+    const maxima = searchFactorMaxima(result);
+    expect(maxima).not.toBeNull();
+    expect(maxima?.maxFo).toBe(result.rows[0].f0);
+    expect(maxima?.maxFoEff).toBe(result.rows[0].fEff);
+    expect(result.rows[result.rows.length - 1].f0).toBeLessThan(result.rows[0].f0);
+  });
+
+  it('空行窗口 → Max 为 null（不抛错，UI 可安全跳过）', () => {
+    const base = computeSearchFactor('Al', 'CuKa1', 3, 3, 0.01);
+    expect(searchFactorMaxima({ ...base, rows: [] })).toBeNull();
+  });
+
+  it('报表布局复刻 legacy 007-Na+.rtf：Element/Target/a1..a5+c/ΔF1ΔF2/Max Fo/表头/数据行', () => {
+    // 007-Na+.rtf 首行数据：2θ=53.00 s=0.28963352 f0=7.049808337 fEff=7.186880013
+    const result = computeSearchFactor('Na1+', 'CuKa1', 53.0, 53.0, 0.01);
+    const lines = formatSearchFactorReport(result).split('\n');
+    expect(lines[0]).toBe('Element Name :  Na1+');
+    expect(lines[1]).toBe(`Target : CuKa1  ${result.lambda}`);
+    expect(lines[2]).toMatch(/^a1=/);
+    expect(lines[6]).toMatch(/^a5=/);
+    expect(lines[7]).toMatch(/^c=/);
+    expect(lines[8]).toMatch(/^DeltaF1 =/);
+    expect(lines[9]).toMatch(/^Max Fo =/);
+    expect(lines[10]).toBe(
+      ' 2theta degree    sin(theta)/lamda         Fo               Fo after F1 & F2',
+    );
+    expect(lines[11]).toContain('7.049808337');
+    expect(lines[11]).toContain('7.186880013');
+    expect(lines).toHaveLength(12); // 11 行报头 + 1 行数据
+  });
+
+  it('b 系数标签为正确的 b1..b5（legacy 报表把 5 个 b 全写成 b1，此处有意修正）', () => {
+    const text = formatSearchFactorReport(computeSearchFactor('Al', 'CuKa1', 3, 3, 0.01));
+    expect(text).toContain('b1=');
+    expect(text).toContain('b5=');
+    expect(text.split('b1=').length - 1).toBe(1); // legacy 为 5
   });
 });
 
