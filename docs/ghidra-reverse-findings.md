@@ -1090,6 +1090,29 @@ F′F″ 复选框（`SettingsPanel.tsx`），与 legacy 行为一致；`support
   逐值闭合。
 - 登记至缺陷簿（`DATA-REFERENCE.md` #17 新增）。
 
+### 2.13 晶格参数装载器 `FUN_00477f90`：6 个 double 装载（2026-10-19 补实）
+
+`FUN_00477f90`（RVA 0x477f90，file 0x77390，§2 偏移表 `Self+0x408..0x430`）
+字节实读：
+
+- 6 个 `FLD [Self+disp32]`（i386 编码 `DD 9B <disp32>`）装载顺序
+  **a(0x408) b(0x410) c(0x418) α(0x420) β(0x428) γ(0x430)**，与
+  `.cord` 第 3/4 行 6 字段一致。
+- 每两个 `FLD` 之间有一次 `mov ECX,[Self+0x314/0x318/0x31C/0x320/0x324]`
+  （控件对象指针区）→ `CALL <rel32>`（虚拟方法，Delphi `GetTextToDouble`
+  类输入解析/校验），随后 `FLD [Self+X]` 装载 double。
+- 每次 `FLD` 前有 `mov EDX,[EBP-4/-8/...]`（本地栈帧写入），对应
+  Delphi 过程参数传递；`8d 83 04 04 00 00` = `lea EAX,[EBX+0x404]`
+  为控件文本区基址计算。
+- 非正值校验：a/b/c 经 UI 输入校验（`CALL` 虚方法），α/β/γ 无显式
+  非正值检查，非正角由 Lp/arcsin 越界防护（Po 崩溃 §8.23 同源）。
+
+**与 web 侧一致**：`crystal.ts` 解析 `.cord` 后直接存入 `a/b/c/α/β/γ`
+6 个 double，`dSpacing` 读 `a/b/c`（立方系 `a=b=c`），`single_xrd.ts`
+`d ≥ λ/2` 预过滤等价于非正值兜底。web 无 Delphi 运行时异常机制，
+非正值输入由 UI 侧数值校验（`CrystalInput` 组件 `Number` 解析 + `>0`
+断言）前置拦截，与 legacy 行为在正常输入域等价。
+
 ### 8.8 开放项登记（2026-10-19 全部裁决完成）
 
 | 项                                                                            | 状态                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
