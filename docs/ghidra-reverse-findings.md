@@ -397,6 +397,12 @@ Ghidra headless 关键参数（避坑）：`-noanalysis`（非 `-noanalyze`）�
      「Search Factor」按钮触发。`verify-search-factor.ts` PASS：Na1+ CuKa1
      2θ=53.00° 与 `ref-data/factors/007-Na+.rtf` 逐值 0.0000%（s/f₀/f_eff
      三列全过），`cronie.test.ts` 新增 4 用例（合计 165/165 通过）。
+     **2026-10-20 补齐原程序视觉要素**（`docs/params-f0.md` §1.1 实测布局）：
+     f₀(2θ) 与 Fo after F1 & F2 双曲线 + `Max Fo` / `Max Fo (F1 F2)` 读数、
+     7 列 × 2 行 (aⱼ bⱼ) 系数表、legacy 报表格式导出
+     （`cronie.ts` `formatSearchFactorReport()`，Na1+ CuKa1 2θ=53.00 的
+     s/f₀/f_eff 与 007-Na+.rtf 逐值一致；b 标签按 b1..b5 正确输出，
+     legacy 报表把 5 个 b 全写成 b1 属其显示缺陷、数值不动）。
 
 **对项目的含义**：上表全部环节已具备逐位复刻条件；剩余未知若要继续消除，优先级为 SG 对话框填表逻辑（影响输入生成）> `.xrd`/RTF 导出器（影响输出文件字节）> `FUN_0047b288` 子系统。
 
