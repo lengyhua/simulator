@@ -124,6 +124,22 @@ export interface XrdParams {
    *   Deviates from legacy; label results accordingly.
    */
   dispersionMode: 'fidelity' | 'extended';
+  /**
+   * Anomalous-dispersion formula variant (used when `useAnomalous` is true):
+   * - `'legacy'` (default, byte-confirmed 2026-10-18 in `CalcXRD.exe`
+   *   0x47c804–0x47c83e): real-arithmetic scalar form
+   *   `f_eff = f₀ + F′ + 0.5·F″²/(f₀+F″)` (no +F″ linear term, no complex
+   *   arithmetic). This is the formula the legacy program actually computes.
+   *   For single-element crystals the |F|² result is numerically identical
+   *   to the complex form to <0.001% (the two differ only in how f″
+   *   enters the interference term, which cancels by symmetry for Al/Po).
+   * - `'complex'`: International Tables Vol C form
+   *   `f = (f₀+F′) + i·F″`, so |F|² includes the f″ cross-term
+   *   `f″²·|Σe^{iφ}|²` that does NOT cancel in multi-species structures
+   *   (e.g. NaCl odd-family reflections, deviation up to ~19% on weak peaks).
+   *   Use this for physically correct multi-element structures.
+   */
+  dispersionForm: 'legacy' | 'complex';
   /** Scan range in degrees. */
   rangeMin: number;
   rangeMax: number;

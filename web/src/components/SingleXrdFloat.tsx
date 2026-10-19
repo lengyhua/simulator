@@ -70,7 +70,7 @@ export function SingleXrdFloat({ open, onClose }: { open: boolean; onClose: () =
                     <td className="mono">{row.k}</td>
                     <td className="mono">{row.l}</td>
                     <td className="mono">{row.d.toFixed(4)}</td>
-                    <td className="mono">{row.twoTheta.toFixed(3)}</td>
+                    <td className="mono">{(Math.round(row.twoTheta * 100) / 100).toFixed(2)}</td>
                     <td className="mono">{Math.round(row.intensity)}</td>
                   </tr>
                 ))}

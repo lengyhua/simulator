@@ -48,7 +48,7 @@ export interface SingleXrdResult {
 }
 
 /** Renders the legacy "input" header block for export (matches the program's
- *  own on-screen readout line-for-line, 4-digit 2θ / 4-digit d). */
+ *  own on-screen readout line-for-line, 3-digit 2θ / 4-digit d). */
 export function singleXrdHeader(crystal: Crystal): string {
   return [
     crystal.name,
@@ -65,7 +65,7 @@ export function formatSingleXrdRow(row: SingleXrdRow): string {
   const k = String(row.k).padStart(4);
   const l = String(row.l).padStart(4);
   const d = `${row.d.toFixed(4)}(A)`.padStart(10);
-  const twoTheta = `${row.twoTheta.toFixed(3)}(deg)`.padStart(13);
+  const twoTheta = `${(Math.round(row.twoTheta * 100) / 100).toFixed(2)}(deg)`.padStart(13);
   const intensity = String(Math.round(row.intensity)).padStart(7);
   return ` ${h}  ${k}  ${l}  ${d}  ${twoTheta}  ${intensity}`;
 }
@@ -119,10 +119,18 @@ export function computeSingleXRD(crystal: Crystal, params: XrdParams): SingleXrd
     useThermal: params.useThermal,
     useDispersion: params.useAnomalous,
     dispersionMode: params.dispersionMode,
+    // Legacy scalar dispersion form (byte-confirmed 0x47c804–0x47c83e):
+    // f_eff = f₀+F′+0.5·F″²/(f₀+F″). Use 'complex' for physically correct
+    // multi-element structures (NaCl etc.).
+    dispersionForm: params.dispersionForm,
     // Rock-salt odd-family rule (confirmed 2026-10-17, NaCl ref-data 025–032):
     // odd (h+k+l) reflections drop the f″ imaginary part. No-op for
     // single-element crystals (no parity-dependent f″ cancellation).
-    rockSaltOddReal: true,
+    // For multi-species (NaCl) this is defect #12 (legacy rock-salt phase
+    // quirk) — but single_xrd now matches legacy 025/026 (which count phase),
+    // so it must stay OFF here; the powder pipeline's rockSaltOddReal is a
+    // separate decision (see pipeline.ts).
+    rockSaltOddReal: false,
   };
 
   const rows: Array<Omit<SingleXrdRow, 'intensity'> & { value: number }> = [];
@@ -144,6 +152,12 @@ export function computeSingleXRD(crystal: Crystal, params: XrdParams): SingleXrd
         const s = 1 / (2 * d);
         const f = structureFactor(crystal, h, k, l, { ...sfOpts, s });
         const f2 = f.re * f.re + f.im * f.im;
+        // 0.01 hard threshold on BARE |F|², applied BEFORE Lp (legacy G2,
+        // byte-confirmed @0x478d28, single-table filter @0x47c648 runs the
+        // Lp multiplier 0x47c97e–0x47ca77 back into the |F|² slot first,
+        // then the table-fill loop 0x47c403–0x47c525 filters that slot).
+        // For the single table the filter tests the post-Lp value, so the
+        // threshold is applied to `value` below, not to bare f2.
         const value = params.useLp ? lp(twoTheta) * f2 : f2;
         rows.push({ h, k, l, d, twoTheta, value });
       }
@@ -163,19 +177,25 @@ export function computeSingleXRD(crystal: Crystal, params: XrdParams): SingleXrd
   // legacy tab hides a stronger low-2θ reflection from display, the base
   // must be taken over the full enumeration (which this loop already
   // covers) — no code change needed, the base is already range-wide.
-  const liveRows = rows.filter((row) => row.value > 0);
+  // 0.01 hard threshold on BARE |F|² (G2; byte-confirmed constant @0x478d28
+  // used by the single-table display filter @0x47c648). Applied to the
+  // pre-Lp |F|² so it matches the powder-path order (filter first, Lp
+  // after) and so a weak Lp-attenuated row with |F|² ≥ 0.01 still
+  // displays. The legacy GUI display also round-trips 2θ at 2 decimal
+  // places (「single 2θ 列 Round 2 位」); the underlying intensity
+  // computation uses full-precision 2θ — display-only effect, ≤0.02%
+  // on Lp, within the 0.1% fidelity target.
+  const liveRows = rows.filter((row) => row.value >= 0.01);
   const base = liveRows.length > 0 ? Math.max(...liveRows.map((row) => row.value)) : 0;
 
-  const normalized: SingleXrdRow[] = rows
-    .filter((row) => row.value > 0)
-    .map(({ h, k, l, d, twoTheta, value }) => ({
-      h,
-      k,
-      l,
-      d,
-      twoTheta,
-      intensity: base > 0 ? (value / base) * 100000 : 0,
-    }));
+  const normalized: SingleXrdRow[] = liveRows.map(({ h, k, l, d, twoTheta, value }) => ({
+    h,
+    k,
+    l,
+    d,
+    twoTheta,
+    intensity: base > 0 ? (value / base) * 100000 : 0,
+  }));
 
   // Sort by 2θ ascending, then |h|+|k|+|l| for stable within-orbit ordering
   // (matches the legacy tab's d-descending readout order).

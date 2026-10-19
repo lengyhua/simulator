@@ -38,11 +38,13 @@ function lambdaOfOption(option: string): number {
  * Settings panel (plan §5-T10): the TFormCalc control set — λ dropdown, q
  * (Gaussian σ), the four checkboxes (Lp / Thermal / PeakShape / F′F″), and the
  * scan range. F′F″ (anomalous dispersion) is ON by default to match the legacy
- * GUI's checked checkbox; it is greyed out for Cr/Fe Kα because FF.dat only
- * ships Cu/Mo/Co Kα dispersion data. Every change lands in the store via
- * `setParams` and immediately recomputes when a crystal is loaded (T10
- * acceptance 6); numeric fields use a draft buffer committed on blur so
- * mid-typing states never trigger a full-spectrum recompute.
+ * GUI's checked checkbox. Cr Kα is greyed out (FF.dat ships no matching
+ * column within 0.05 Å); Fe Kα1 is NOT greyed out — by the G5 loader quirk
+ * (FUN_0047907c, §1/G5) the shipped program reads the Co Kα1 column of
+ * FF.dat for it, so it is in-coverage in fidelity mode. Every change lands in
+ * the store via `setParams` and immediately recomputes when a crystal is
+ * loaded (T10 acceptance 6); numeric fields use a draft buffer committed on
+ * blur so mid-typing states never trigger a full-spectrum recompute.
  *
  * There is no global B control: the thermal factor is per atom (the atom
  * table's B column / .cord 7th field).
@@ -55,10 +57,19 @@ export function SettingsPanel() {
   const [drafts, setDrafts] = useState<Partial<Record<keyof XrdParams, string>>>({});
 
   // F′F″ dispersion is only tabulated for Cu/Mo/Co Kα in FF.dat (fidelity mode).
-  // In extended mode, Cr/Fe Kα are supported via LBNL Henke f″ (f′=0 approx);
-  // the checkbox stays enabled for those targets when mode='extended'.
+  // In extended mode, Cr/Fe Kα are supported via LBNL Henke f″ (f′=0 approx).
+  // G5 quirk (§1/G5, FUN_0047907c): in fidelity mode Fe Kα1 secretly maps to
+  // the Co Kα1 column of FF.dat, so Fe Kα1 is NOT unsupported — the UI stays
+  // enabled for it (no grey-out), matching the shipped program's behavior.
+  // Cr Kα remains unsupported (no column within 0.05 Å in either mode).
   const isExtended = params.dispersionMode === 'extended';
-  const dispersionSupported = isExtended ? hasDispersionExtended(params.lambda) : hasDispersion(params.lambda);
+  // Fidelity: in-coverage = plain nearest-column hit (Cu/Mo/Co Kα1+Kα2)
+  // OR the G5 Fe Kα1 quirk (legacy loader reads Co Kα1 for it).
+  const FE_KA1 = 1.93604;
+  const feKa1Quirk = !isExtended && Math.abs(params.lambda - FE_KA1) < 1e-4;
+  const dispersionSupported = isExtended
+    ? hasDispersionExtended(params.lambda)
+    : hasDispersion(params.lambda) || feKa1Quirk;
 
   /** Applies a param patch and recomputes right away when possible. */
   const apply = useCallback(
@@ -179,7 +190,7 @@ export function SettingsPanel() {
               title={
                 dispersionSupported
                   ? 'F′F″ 异常散射修正（默认开启，与 CalcXRD 一致）'
-                  : 'FF.dat 仅提供 Cu/Mo/Co Kα 色散数据，Cr/Fe Kα 不适用'
+                  : 'FF.dat 无对应波长色散数据（Cr Kα 不适用；Fe Kα1 经 G5 错配读 Co Kα1 列）'
               }
             >
               F′F″（异常散射）

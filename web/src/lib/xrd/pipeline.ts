@@ -32,6 +32,13 @@ import { laueOperations } from './wyckoff';
  * intensity ratios ~1e-26 — far below any real weak reflection).
  */
 const EXTINCTION_DROP = 1e-12;
+// Legacy 0.01 hard threshold (G2, byte-confirmed extended-precision
+// constant @0x478d28, 0x478ad6–0x478b09): the powder path zeroes |F|²[i] < 0.01
+// before binning — the filter tests the BARE |F|² (the 0.01 threshold loop
+// runs before the Lp-multiplication loop 0x478ad6; Lp applies to surviving
+// rows only). The single-table display pass (0x47c648) uses the same value.
+// Accordingly this floor is applied to |F|², not to |F|²·Lp·mult.
+const F2_ABSOLUTE_FLOOR = 0.01;
 
 /** Validates calculation parameters, throwing errors with context. */
 function validateParams(params: XrdParams): void {
@@ -113,6 +120,9 @@ export function computeXRDPattern(crystal: Crystal, params: XrdParams): XRDPatte
     useThermal: params.useThermal,
     useDispersion: params.useAnomalous,
     dispersionMode: params.dispersionMode,
+    // Legacy scalar form (byte-confirmed 0x47c804–0x47c83e, 定案 1):
+    // f_eff = f₀+F′+0.5·F″²/(f₀+F″). 'complex' for multi-element structures.
+    dispersionForm: params.dispersionForm,
   };
 
   const candidates: HKLReflection[] = [];
@@ -154,6 +164,13 @@ export function computeXRDPattern(crystal: Crystal, params: XrdParams): XRDPatte
         // from the original (h,k,l) equals s of the canonical `rep`.
         const s = 1 / (2 * d);
         const f = structureFactor(crystal, rep[0], rep[1], rep[2], { ...sfOpts, s });
+        const f2 = f.re * f.re + f.im * f.im;
+        // Legacy 0.01 hard threshold on BARE |F|² (G2): the filter loop
+        // 0x478ad6–0x478b09 zeros |F|²[i] < 0.01 BEFORE the Lp loop, so
+        // Lp-attenuation of surviving rows is downstream of the filter.
+        if (f2 < F2_ABSOLUTE_FLOOR) {
+          continue;
+        }
         const intensity = reflectionIntensity(twoTheta, f, images.length, {
           useLp: params.useLp,
         });
@@ -182,7 +199,9 @@ export function computeXRDPattern(crystal: Crystal, params: XrdParams): XRDPatte
   }
   const kept =
     maxIntensity > 0
-      ? candidates.filter((r) => r.intensity > maxIntensity * EXTINCTION_DROP)
+      ? candidates.filter(
+          (r) => r.intensity > maxIntensity * EXTINCTION_DROP && r.intensity >= F2_ABSOLUTE_FLOOR,
+        )
       : [];
   const reflections = normalizeReflections(kept);
 

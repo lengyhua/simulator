@@ -93,6 +93,30 @@ function nearestColumn(lambda: number): { index: number; delta: number } {
 }
 
 /**
+ * Fe Kα1 fidelity-mode column quirk (G5, byte-confirmed in
+ * CalcXRD.exe FUN_0047907c loader switch, `docs/ghidra-reverse-findings.md`
+ * §1/G5): the legacy program reads the Co Kα1 column of FF.dat when the user
+ * selects Fe Kα1, paired with the Fe λ value (1.93604 Å) for geometry. This
+ * is a latent loader bug in the shipped program; fidelity mode reproduces it
+ * faithfully rather than correcting to "nearest column". Fe Kα2 is not a
+ * selectable option in the legacy λ dropdown, so the quirk does not apply
+ * to it.
+ */
+const FE_KA1_LAMBDA = 1.93604;
+
+/**
+ * Column index for fidelity-mode lookup. Returns the Co Kα1 column index
+ * when the wavelength matches Fe Kα1 within 1e-4 Å (the G5 quirk);
+ * otherwise the plain nearest column.
+ */
+function fidelityColumn(lambda: number): number {
+  if (Math.abs(lambda - FE_KA1_LAMBDA) < 1e-4) {
+    return Object.keys(FF_LAMBDAS).indexOf('CoKa1');
+  }
+  return nearestColumn(lambda).index;
+}
+
+/**
  * True when `lambda` matches one of the tabulated radiation columns closely
  * enough that a dispersion correction exists (Cu/Mo/Co Kα) in fidelity mode.
  * Cr/Fe Kα return false in fidelity mode (UI greys the F′F″ checkbox).
@@ -149,7 +173,12 @@ export function getDispersion(
   const trimmed = element.trim();
   const neutral = normalizeElement(trimmed);
   const zIndex = FF_SYMBOLS.indexOf(neutral); // −1 when not in H..U
-  const { index: col, delta } = nearestColumn(lambda);
+  // Fidelity mode uses the G5-corrected column (Fe Kα1 → Co Kα1); extended
+  // mode falls through to the plain nearest column for its FF.dat pass.
+  const col = mode === 'fidelity' ? fidelityColumn(lambda) : nearestColumn(lambda).index;
+  const delta = mode === 'fidelity' && Math.abs(lambda - FE_KA1_LAMBDA) < 1e-4
+    ? 0 // G5 quirk: legacy reads Co Kα1 by design for Fe Kα1, so treat as in-coverage
+    : Math.abs(Object.values(FF_LAMBDAS)[col] - lambda);
 
   const ffSupported =
     Number.isFinite(lambda) && lambda > 0 && zIndex >= 0 && delta <= LAMBDA_TOLERANCE;

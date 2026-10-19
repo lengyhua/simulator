@@ -23,6 +23,14 @@ import type { XrdParams } from './types';
  * #11 in `docs/DATA-REFERENCE.md` §4. Fe = 1.93604 matches the legacy
  * FeKa1 entry; Cr is NOT in the legacy list (web-only extension, dispersion
  * via Henke data — see `henke_dispersion.ts`).
+ *
+ * 2026-10-19 定案（ref-data 019/033/034/035 实证，§8.12）：legacy 程序几何
+ * 计算**实际使用 0.71930 笔误值**——Al B=1 全谱对照，λ=0.71930 与 legacy
+ * 峰值残差 ≤0.005%（(200)=64895 vs 64894、(220)=20350 vs 20349），而
+ * λ=0.70930 残差达 0.152%（(220) 20380 vs 20349），远超 0.1% 目标。
+ * web 保留 0.70930（LAMBDA_TABLE.Mo）为物理正确默认值；legacy 保真复刻
+ * 场景请显式选 CUSTOM_LAMBDA_PRESETS 的 "Mo Kα1 (legacy 笔误 0.71930)"
+ * 条目。缺陷 #11 由「待决策」定案为「双值并存、legacy 保真用 0.71930」。
  */
 export const LAMBDA_TABLE: Readonly<Record<string, number>> = Object.freeze({
   Cu: 1.54056,
@@ -42,6 +50,11 @@ export const CUSTOM_LAMBDA_PRESETS: ReadonlyArray<{ label: string; value: number
   { label: 'Ti Kα', value: 2.8308 },
   { label: 'Al Kα', value: 7.0919 },
   { label: 'Cu Kα₂ (K-beta)', value: 1.54433 },
+  // Legacy fidelity: MoKa1 typo value (defect #11, §8.12). The shipped
+  // program computed geometry with 0.71930 (not the physical 0.70930);
+  // picking this reproduces the legacy MoKα1 ref-data tables (019/033/034/035)
+  // to <0.1%.
+  { label: 'Mo Kα1 (legacy 笔误 0.71930)', value: 0.7193 },
 ]);
 
 /** Default wavelength: Cu Kα (Å) — the Al.xrd reference was measured with it. */
@@ -118,6 +131,7 @@ export function createDefaultParams(): XrdParams {
     usePeakShape: true,
     useAnomalous: DEFAULT_USE_DISPERSION,
     dispersionMode: 'fidelity',
+    dispersionForm: 'legacy',
     rangeMin: SCAN_RANGE_MIN,
     rangeMax: SCAN_RANGE_MAX,
     step: SCAN_STEP,
