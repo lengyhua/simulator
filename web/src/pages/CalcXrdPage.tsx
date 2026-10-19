@@ -9,6 +9,7 @@ import { XRDChart } from '@/components/XRDChart';
 import { HKLTable } from '@/components/HKLTable';
 import { SingleXrdFloat } from '@/components/SingleXrdFloat';
 import { WyckoffFloat } from '@/components/WyckoffFloat';
+import { SearchFactorFloat } from '@/components/SearchFactorFloat';
 import { useCrystalStore } from '@/store/crystal-store';
 
 /**
@@ -28,6 +29,7 @@ export default function CalcXrdPage() {
   const compute = useCrystalStore((state) => state.compute);
   const [singleOpen, setSingleOpen] = useState(false);
   const [wyckoffOpen, setWyckoffOpen] = useState(false);
+  const [searchFactorOpen, setSearchFactorOpen] = useState(false);
 
   return (
     <>
@@ -67,6 +69,14 @@ export default function CalcXrdPage() {
                 <button
                   type="button"
                   className="btn"
+                  onClick={() => setSearchFactorOpen(true)}
+                  title="查看元素的原子散射因子 f₀ 与色散修正（Search Factor）"
+                >
+                  Search Factor
+                </button>
+                <button
+                  type="button"
+                  className="btn"
                   onClick={() => setSingleOpen(true)}
                   disabled={!hasPattern}
                   title={hasPattern ? '查看 single XRD 逐反射表（可导出）' : '先计算图谱'}
@@ -91,6 +101,7 @@ export default function CalcXrdPage() {
       </main>
       <SingleXrdFloat open={singleOpen} onClose={() => setSingleOpen(false)} />
       <WyckoffFloat open={wyckoffOpen} onClose={() => setWyckoffOpen(false)} />
+      <SearchFactorFloat open={searchFactorOpen} onClose={() => setSearchFactorOpen(false)} />
     </>
   );
 }

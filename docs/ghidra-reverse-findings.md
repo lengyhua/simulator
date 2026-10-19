@@ -376,6 +376,14 @@ Ghidra headless 关键参数（避坑）：`-noanalysis`（非 `-noanalyze`）�
      已完全由 web 现有引擎覆盖（`factor_data.ts` + `dispersion.ts` +
      `structure_factor.ts`），**若移植只是一个 UI 包装层，无新增计算逻辑**。
      是否纳入端口范围属产品决策（§8.8 C3 开放项），公式层面已无未知。
+     **C3 已裁决（2026-10-19，用户确认移植）**：`web/src/lib/xrd/cronie.ts`
+     新增 `computeSearchFactor(species, radiation, rangeMin, rangeMax, step)`
+     （公式口径 `f₀+F′+0.5F″²/(f₀+F″)`，分母 f″ 字节级 §8.19），`web/src/
+     components/SearchFactorFloat.tsx` 为 UI 包装层（选元素+辐射靶+2θ 窗口
+     → 显示 a₁..a₅/c/ΔF1/ΔF2 系数 + 2θ/s/f₀/f_eff 表），从 `CalcXrdPage`
+     「Search Factor」按钮触发。`verify-search-factor.ts` PASS：Na1+ CuKa1
+     2θ=53.00° 与 `ref-data/factors/007-Na+.rtf` 逐值 0.0000%（s/f₀/f_eff
+     三列全过），`cronie.test.ts` 新增 4 用例（合计 165/165 通过）。
 
 **对项目的含义**：上表全部环节已具备逐位复刻条件；剩余未知若要继续消除，优先级为 SG 对话框填表逻辑（影响输入生成）> `.xrd`/RTF 导出器（影响输出文件字节）> `FUN_0047b288` 子系统。
 

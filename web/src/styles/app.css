@@ -633,6 +633,45 @@ button:disabled, .btn:disabled, .btn-disabled {
   white-space: nowrap;
 }
 
+/* Search Factor (legacy TFormFactor dialog port, §8.19/§8.20) */
+.search-factor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.search-factor-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.search-factor-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+}
+.search-factor-row select,
+.search-factor-row input[type='number'] {
+  font-size: 13px;
+  padding: 4px 6px;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 4px;
+  background: var(--bg, #fff);
+  color: var(--text, #222);
+  min-width: 100px;
+}
+.search-factor-table-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 50vh;
+}
+.search-factor-table-wrap td,
+.search-factor-table-wrap th {
+  white-space: nowrap;
+}
+
 /* Wyckoff */
 .wyckoff-meta {
   margin: 0;

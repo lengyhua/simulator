@@ -24,6 +24,7 @@
  */
 
 import { FACTOR_COEFFS, type FactorCoefficients } from './factor_data';
+import { FF_COLUMNS, FF_SYMBOLS, FF_TABLE, FF_LAMBDAS } from './ff_data';
 
 /** Trailing ion charge, e.g. the `1+` of `Na1+` or the `2-` of `O2-`. */
 const ION_CHARGE_RE = /\d*[+-]$/;
@@ -111,4 +112,119 @@ export function f0AtZero(species: string): number {
     total += amplitude;
   }
   return total;
+}
+
+/**
+ * Legacy "Search Factor" dialog (TFormFactor, §8.19/§8.20) — the ported
+ * UI component the user chose to include (product decision 2026-10-19).
+ *
+ * The dialog lets the user pick an element + radiation target and displays:
+ *   - the a₁..a₅/c coefficients (from Factor.dat)
+ *   - ΔF1 (f′) / ΔF2 (f″) for the selected radiation
+ *   - a table of 2θ / s / f₀ / f₀+F′+0.5F″²/(f₀+F″) over a 2θ window
+ *
+ * The "Fo after F1 & F2" column uses the SAME scalar formula as the
+ * calculation pipeline (byte-confirmed §8.19: denominator f₀+F″, not the
+ * help RTF's f₀+F′).  The f₀ column uses Factor.dat's 5-Gaussian form.
+ * No new calculation logic — this is a thin wrapper over `f0` +
+ * `FF_TABLE`/`FF_SYMBOLS` lookups.
+ */
+
+export interface SearchFactorEntry {
+  /** 2θ in degrees. */
+  twoTheta: number;
+  /** sinθ/λ in Å⁻¹. */
+  s: number;
+  /** f₀ from Factor.dat 5-Gaussian form. */
+  f0: number;
+  /** f₀ + F′ + 0.5·F″²/(f₀+F″) — the legacy "Fo after F1 & F2" value. */
+  fEff: number;
+}
+
+export interface SearchFactorResult {
+  /** Species name as given (e.g. 'Na1+'). */
+  species: string;
+  /** Neutral element symbol (e.g. 'Na'). */
+  neutral: string;
+  /** Radiation label (e.g. 'CuKa1'). */
+  radiation: string;
+  /** Wavelength in Å. */
+  lambda: number;
+  /** Factor.dat coefficients a1..a5. */
+  a: number[];
+  /** Factor.dat coefficients b1..b5. */
+  b: number[];
+  /** Factor.dat constant c. */
+  c: number;
+  /** ΔF1 = f′ (dimensionless). */
+  deltaF1: number;
+  /** ΔF2 = f″ (dimensionless). */
+  deltaF2: number;
+  /** 2θ/s/f₀/f_eff table rows. */
+  rows: SearchFactorEntry[];
+}
+
+/**
+ * Computes the Search Factor dialog's output for `species` at radiation
+ * column `radiation` (key of {@link FF_LAMBDAS}, e.g. 'CuKa1') over a
+ * 2θ window `[rangeMin, rangeMax]` degrees with `step` step (degrees).
+ *
+ * @throws Error when the species is not in Factor.dat or the neutral form
+ *   is not in FF_SYMBOLS.
+ */
+export function computeSearchFactor(
+  species: string,
+  radiation: string,
+  rangeMin: number,
+  rangeMax: number,
+  step: number,
+): SearchFactorResult {
+  const coeffs = getCoefficients(species);
+  if (!coeffs) {
+    throw new Error(
+      `未知物种「${species}」：Factor.dat 散射因子表中无此符号`,
+    );
+  }
+  const neutral = normalizeElement(species);
+  const zIndex = FF_SYMBOLS.indexOf(neutral);
+  if (zIndex < 0) {
+    throw new Error(
+      `元素「${neutral}」不在 FF.dat 色散表中（H–U，92 元素）`,
+    );
+  }
+  const radIndex = (Object.keys(FF_LAMBDAS) as readonly string[]).indexOf(radiation);
+  if (radIndex < 0) {
+    throw new Error(
+      `辐射靶「${radiation}」无效（支持：${FF_COLUMNS.join(', ')}）`,
+    );
+  }
+  const lambda = FF_LAMBDAS[radiation as keyof typeof FF_LAMBDAS];
+  const row = FF_TABLE[zIndex];
+  const fPrime = row[2 * radIndex];
+  const fDoublePrime = row[2 * radIndex + 1];
+
+  const rows: SearchFactorEntry[] = [];
+  for (let twoTheta = rangeMin; twoTheta <= rangeMax + 1e-9; twoTheta += step) {
+    const theta = (twoTheta / 2) * (Math.PI / 180);
+    const s = Math.sin(theta) / lambda;
+    const f0Val = f0(species, s);
+    // Legacy formula (byte-confirmed §8.19, 0x47c833 FMUL loads f″ slot):
+    // f_eff = f₀ + F′ + 0.5·F″²/(f₀+F″)
+    const fEff =
+      f0Val + fPrime + (0.5 * fDoublePrime * fDoublePrime) / (f0Val + fDoublePrime);
+    rows.push({ twoTheta, s, f0: f0Val, fEff });
+  }
+
+  return {
+    species,
+    neutral,
+    radiation,
+    lambda,
+    a: [...coeffs.a],
+    b: [...coeffs.b],
+    c: coeffs.c,
+    deltaF1: fPrime,
+    deltaF2: fDoublePrime,
+    rows,
+  };
 }

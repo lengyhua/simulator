@@ -9,6 +9,7 @@ import {
   getCoefficients,
   hasElement,
   normalizeElement,
+  computeSearchFactor,
 } from './cronie';
 
 /** Atomic numbers for the 92 neutral elements H–U (table self-check). */
@@ -130,6 +131,39 @@ describe('f0 — 与 IUCr 交叉校验（旧表仅作参照，不参与运行时
     expect(CRONIE_COEFFS.Al.a).toEqual([6.4202, 1.9002, 1.5936, 1.9646]);
     expect(CRONIE_COEFFS.Al.b).toEqual([3.0387, 0.7426, 31.5472, 85.0886]);
     expect(CRONIE_COEFFS.Al.c).toBeCloseTo(1.1151, 6);
+  });
+});
+
+describe('computeSearchFactor — legacy Search Factor 对话框（§8.19/§8.20，2026-10-19 C3 已裁决：移植为 UI 组件）', () => {
+  it('Na1+ @ CuKa1, 2θ=53.00° 与 ref-data/007-Na+.rtf 逐值对照 0.0000%', () => {
+    // 007-Na+.rtf: 2θ=53.00 s=0.28963352 f0=7.049808337 fEff=7.186880013
+    //              ΔF1=0.136 ΔF2=0.124
+    const result = computeSearchFactor('Na1+', 'CuKa1', 53.00, 53.00, 0.01);
+    expect(result.rows).toHaveLength(1);
+    const row = result.rows[0];
+    expect(row.s).toBeCloseTo(0.28963352, 8);
+    expect(row.f0).toBeCloseTo(7.049808337, 9);
+    expect(row.fEff).toBeCloseTo(7.186880013, 9);
+    expect(result.deltaF1).toBeCloseTo(0.136, 3);
+    expect(result.deltaF2).toBeCloseTo(0.124, 3);
+  });
+
+  it('Al @ CuKa1, 2θ=38.63° f0 ≈ 8.9 (13 e⁻ at s=0, decreases with s)', () => {
+    const result = computeSearchFactor('Al', 'CuKa1', 38.63, 38.63, 0.01);
+    expect(result.rows[0].f0).toBeCloseTo(8.94, 0);
+    expect(result.rows[0].fEff).toBeGreaterThan(result.rows[0].f0); // f′ > 0
+  });
+
+  it('未知物种抛错', () => {
+    expect(() => computeSearchFactor('Xx', 'CuKa1', 3, 100, 0.01)).toThrow();
+  });
+
+  it('多行输出 2θ 递增', () => {
+    const result = computeSearchFactor('Cu', 'CuKa1', 3, 35, 0.01);
+    expect(result.rows.length).toBeGreaterThan(300);
+    for (let i = 1; i < result.rows.length; i += 1) {
+      expect(result.rows[i].twoTheta).toBeGreaterThan(result.rows[i - 1].twoTheta - 1e-9);
+    }
   });
 });
 
