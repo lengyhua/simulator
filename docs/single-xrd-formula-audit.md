@@ -163,9 +163,12 @@ Al=12.9986 全过）、色散行错配（Po/Pa 行均试过）、Lp 变体、DW 
 >   Po B=1/B=0 cross-ratio 与 DW 闭合格式 `exp(−2B(N−1)/(4a²))`（Nref=1，
 >   primitive 单质）自洽 7 点 0.0000%；21.2% 残差 =（已删除的 ref-temp 目录中的）Po-221
 >   存档 B≈1.55 与 samples/Po.cord B=1 不匹配（N=11 点 B 差 21.79%，
->   同量级）。`web/scripts/verify-po-model.ts` PASS。最终逐值闭合仍需
->   GUI 实机复跑 Po-221（repo 无权威 Po ref-data，CLAUDE.md 约束不
->   擅跑未信任二进制）。
+>   同量级）。`web/scripts/verify-po-model.ts` PASS。
+> - **Po 行后续闭合（§8.23，2026-10-19 晚）**：legacy 开 `samples/Po.cord`
+>   点 Single XRD **自身即崩**（"Invalid floating point operation"——primitive
+>   单质无系统消光，枚举含 d<λ/2 项致 arcsin 越界），**不存在合法 GUI
+>   复现路径**，逐值复跑比对不再可能也无必要；Po 逐值闭合路径**关闭**，
+>   维持「归因 B 值不匹配、公式层面自洽 0.0000%」结论。
 
 ## 7. 对 web 的影响与后续（本次未改代码）
 
@@ -286,10 +289,12 @@ I = Lp(2θ)·|F|²_odd / base × 100000
   指令级定案 + web 已实施（`single_xrd.ts` base=全范围最强 live 行），该标签在
   仓库 0 命中（陈旧引用），**关闭**；用户「结构对、强度归一即可，不逐值对齐」
   的决定覆盖残余逐值差。
-- **仍未闭合**：§6 的 NaCl-225（19.7%）已裁决（2026-10-19，`ghidra-
+- **§6 未决异常全部关闭**：NaCl-225（19.7%）已裁决（2026-10-19，`ghidra-
   reverse-findings.md` §8.13——权威 ref-data 025/026 下 web 物理正确口径
-  逐峰 <0.01%，19.7% 为历史近似模型残差）；Po（21.2%）维持开放（repo
-  内无权威 Po ref-data，待 GUI 实机复跑比对）。§8.1 的 NaCl 偏差快照
+  逐峰 <0.01%，19.7% 为历史近似模型残差；025–032 全 8 条 × 全 10 峰
+  80 点 0.0000%）；Po（21.2%）归因关闭（§8.16：存档 B≈1.55 vs B=1 不匹配、
+  公式自洽 0.0000%；§8.23：legacy 开 Po.cord 点 Single XRD 自身崩溃，
+  无合法 GUI 复现路径，逐值闭合路径关闭）。§8.1 的 NaCl 偏差快照
   （1.55–6.69%）系 M2 族代码所测，M3 修复后已复测（§8.9：NaCl 奇族千分比
   91.05/19.22/8.80，Lp 比 2.1286/1.5202）。
 
