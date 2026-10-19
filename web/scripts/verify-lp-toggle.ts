@@ -5,27 +5,23 @@
  *
  * 参数矩阵（CuKα1 B=0 对）：
  *   033: Fd关 Th开 Lp关 PS关
- *   036: Fd关 Th开 Lp关 PS开   ← 按 ref-data 登记，PS 对 single 表强度应无影响
+ *   036: Fd关 Th开 Lp关 PS开 B=1（ref-data 登记 B=0 有误、实际 B=1，§8.18 定案）
  *
  * 参数矩阵（MoKα1 B=1 对）：
  *   034: Fd开 Th开 Lp开 PS开
  *   035: Fd关 Th开 Lp开 PS开
  *
  * 本脚本验证：
- *   (a) web Lp关 vs legacy 033：全峰 <0.01%（基线确认）
- *   (b) web Lp开 vs legacy 036：全峰 <0.01%（036 表值与 Lp开 口径一致；
- *       若 036 实际含 Lp 效应，Lp关 复算值会显著偏离 036，此时以 Lp开 为准）
+ *   (a) web Lp关 B=0 vs legacy 033：全峰 <0.01%（基线确认）
+ *   (b) web Lp关 B=1 vs legacy 036：全峰 <0.01%（§8.18 定案：036 登记 B=0
+ *       有误、实际 B=1，Lp关；036 表值 87485/57340 = web B=1 Lp关 0.0000%）
  *   (c) Fd开 vs legacy 034 / Fd关 vs legacy 035（MoKα1 B=1）：≤0.1%
- *   (d) legacy 033 vs 036 差值 vs web Lp关 vs Lp开 比值：判定 036 是否
- *       实际含 Lp 效应（若 036/033 ≈ web Lp开/web Lp关，则 036 表值含 Lp，
- *       ref-data 登记「Lp关」有误，应更正为 Lp开）
+ *   (d) legacy 036/033 比值 vs web B=1 Lp关/B=0 Lp关（CuKα1）：判定 036
+ *       差异是否为 B 值 DW 衰减（B=1 vs B=0），而非 Lp 效应
  *
  * 裁决预期：
- *   若 036/033 ≈ web(Lp开)/web(Lp关)：036 ref-data 登记的「Lp关」是录入
- *   错误，036 实际 = Lp开 档，应更正 ref-data/036 参数行 Lp 列。
- *   若 036/033 ≈ 1：036 与 033 无差异，PS 开关对 single 表强度无影响
- *   （符合峰值归一 + Lp关 的口径），033/036 表值本应相同，差异说明
- *   两组是不同扫描条件（需查 2θ 窗口/网格参数）。
+ *   036/033 ≈ exp(−2·1·(N−3)/(4a²)) → 036 实为 B=1 档（§8.18 已定案），
+ *   PS 开关对 single 表强度无影响（033 B=0 PS关 = 复跑 B=0 PS开 逐值一致）。
  *
  * Run: cd web && npx vite-node scripts/verify-lp-toggle.ts
  */
@@ -75,11 +71,11 @@ const dev033_lpOff = maxDev(p_lpOff_fdOff, LEG_033);
 console.log('=== (a) web Lp关 Fd关 B=0 CuKα1 vs legacy 033 ===');
 console.log('N=4:', p_lpOff_fdOff[4], 'legacy:', LEG_033[4], 'dev:', dev033_lpOff.toFixed(4) + '%');
 
-// (b) web Lp开 vs legacy 036
-const p_lpOn_fdOff = peaks(0, 1.54056, false, true);
-const dev036_lpOn = maxDev(p_lpOn_fdOff, LEG_036);
-console.log('\n=== (b) web Lp开 Fd关 B=0 CuKα1 vs legacy 036 ===');
-console.log('N=4:', p_lpOn_fdOff[4], 'legacy:', LEG_036[4], 'dev:', dev036_lpOn.toFixed(4) + '%');
+// (b) web Lp关 B=1 vs legacy 036（§8.18 定案：036 登记 B=0 有误、实际 B=1）
+const p_lpOff_b1 = peaks(1, 1.54056, false, false);
+const dev036_lpOff_b1 = maxDev(p_lpOff_b1, LEG_036);
+console.log('\n=== (b) web Lp关 Fd关 B=1 CuKα1 vs legacy 036（036 实为 B=1，§8.18）===');
+console.log('N=4:', p_lpOff_b1[4], 'legacy:', LEG_036[4], 'dev:', dev036_lpOff_b1.toFixed(4) + '%');
 
 // (c) Fd开/关 vs legacy 034/035（MoKα1 B=1，Lp开）
 const p_lpOn_fdOn = peaks(1, 0.7193, true, true);
@@ -90,33 +86,33 @@ console.log('\n=== (c) web Lp开 Fd开/关 B=1 MoKα1 0.7193 vs legacy 034/035 =
 console.log('Fd开 N=4:', p_lpOn_fdOn[4], 'legacy034:', LEG_034[4], 'dev:', dev034.toFixed(4) + '%');
 console.log('Fd关 N=4:', p_lpOn_fdOff_m[4], 'legacy035:', LEG_035[4], 'dev:', dev035.toFixed(4) + '%');
 
-// (d) 033/036 比值 vs Lp开/Lp关 比值
-console.log('\n=== (d) legacy 036/033 vs web Lp开/Lp关（CuKα1 B=0）===');
-console.log('N    036/033(legacy)  Lp开/Lp关(web)  是否≈');
-let lpEffectConsistent = true;
+// (d) 033(B=0)/036(B=1) 比值 vs DW 衰减 exp(−2·1·(N−3)/(4a²))（CuKα1）
+const a = 4.0339;
+const a2 = a * a;
+console.log('\n=== (d) legacy 036/033 vs DW 衰减 B=1（CuKα1 Lp关）===');
+console.log('N    036/033(legacy)  exp(−2·1·(N−3)/(4a²))  是否≈');
+let dwConsistent = true;
 for (const N of [4, 8]) {
   const legacyRatio = LEG_036[N] / LEG_033[N];
-  const webRatio = p_lpOn_fdOff[N] / p_lpOff_fdOff[N];
-  const close = Math.abs(legacyRatio - webRatio) / webRatio < 0.02;
-  if (!close) lpEffectConsistent = false;
-  console.log(`${N}   ${legacyRatio.toFixed(5)}       ${webRatio.toFixed(5)}   ${close ? '≈' : '≠'}`);
+  const dw = Math.exp((-2 * 1 * (N - 3)) / (4 * a2));
+  const close = Math.abs(legacyRatio - dw) / dw < 0.01;
+  if (!close) dwConsistent = false;
+  console.log(`${N}   ${legacyRatio.toFixed(5)}  ${dw.toFixed(5)}  ${close ? '≈' : '≠'}`);
 }
 
 // 判定
-if (lpEffectConsistent) {
-  console.log('\n裁决：036 表值 ≈ 033 × Lp开/Lp关 比值 → 036 实际含 Lp 效应，');
-  console.log('      ref-data/036 登记「Lp关」应为「Lp开」（录入错误），036 = Lp开 档。');
-  console.log('      （PS 开关对 single 表强度无影响，符合峰值归一口径。）');
+if (dwConsistent) {
+  console.log('\n裁决：036/033 比值 ≈ DW 衰减 B=1 → 036 实为 B=1 档（§8.18 定案），');
+  console.log('      PS 开关对 single 表强度无影响（033 B=0 PS关 = 复跑 B=0 PS开 逐值一致）。');
 } else {
-  console.log('\n裁决：036/033 比值 ≠ Lp开/Lp关 → 036 不是简单的 033+Lp开，');
-  console.log('      可能 Lp关/PS开 组合本身产生差异，或两组是不同扫描参数。需人工核实。');
+  console.log('\n裁决：036/033 比值 ≠ DW 衰减 B=1 → 与 §8.18 定案不一致，需人工核实。');
 }
 
-const pass = dev033_lpOff < 0.1 && dev036_lpOn < 0.1 && dev034 < 0.1 && dev035 < 0.1;
+const pass = dev033_lpOff < 0.1 && dev036_lpOff_b1 < 0.1 && dev034 < 0.1 && dev035 < 0.1;
 console.log('\n=== 总裁决 ===');
 console.log(
   pass
-    ? `PASS：033(Lp关)${dev033_lpOff.toFixed(4)}% / 036(Lp开)${dev036_lpOn.toFixed(4)}% / 034${dev034.toFixed(4)}% / 035${dev035.toFixed(4)}% 均 <0.1%`
-    : `RECHECK：033=${dev033_lpOff.toFixed(4)}% 036=${dev036_lpOn.toFixed(4)}% 034=${dev034.toFixed(4)}% 035=${dev035.toFixed(4)}%`,
+    ? `PASS：033(B=0)${dev033_lpOff.toFixed(4)}% / 036(B=1)${dev036_lpOff_b1.toFixed(4)}% / 034${dev034.toFixed(4)}% / 035${dev035.toFixed(4)}% 均 <0.1%`
+    : `RECHECK：033=${dev033_lpOff.toFixed(4)}% 036=${dev036_lpOff_b1.toFixed(4)}% 034=${dev034.toFixed(4)}% 035=${dev035.toFixed(4)}%`,
 );
 process.exit(pass ? 0 : 1);
