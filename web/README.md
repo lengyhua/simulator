@@ -60,7 +60,7 @@ tests/fixtures/Al.xrd    # 原程序参考谱（T07/T12 验收基准，9701 数�
   mult 为 Laue 群等价面数（含 Friedel 对去重）。
 - 高斯展宽 `I(2θ) = Σ I_hkl·exp(−(2θ−2θ₀)²/2q²)`（峰顶归一，无 `1/(q√2π)`
   密度因子——help RTF 公式(6) 文字含该因子但原程序实现不采用，实证见
-  `ref-temp/Al.xrd`：原程序保存文件峰值 152557 = I_hkl 本身，非
+  `samples/Al.xrd`：原程序保存文件峰值 152557 = I_hkl 本身，非
   I_hkl/(q√2π)≈608614；与 GUI 曲线实测口径一致，`docs/params-geometry-peak.md`
   §5），默认 q=0.10°（q=σ；早期 q=0.25° 误读为 FWHM，已废弃，见
   `src/lib/xrd/constants.ts:44` 注释）。

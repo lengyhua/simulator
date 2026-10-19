@@ -70,7 +70,7 @@ const pass = maxDev2 < 0.01;
 console.log(pass
   ? 'PASS：web Po B=1/B=0 cross-ratio 与 DW 闭合格式 exp(−2B(N−1)/(4a²)) 自洽（<0.01%），' +
     '公式口径正确（f₀ 与 N 无关项在 B 比值中抵消，只留 DW 的 N−1 项）。' +
-    'audit §6 的 21.2% 残差 = ref-temp Po-221 存档 B≈1.55 与 samples/Po.cord B=1 不匹配' +
+    'audit §6 的 21.2% 残差 = （已删除的 ref-temp 目录中的）Po-221 存档 B≈1.55 与 samples/Po.cord B=1 不匹配' +
     '（N=11 点 B 差 ' + diff11.toFixed(1) + '%，同量级），非 legacy 公式缺陷。' +
     '最终数值闭合仍需 GUI 实机复跑 Po-221（repo 无权威 Po ref-data，CLAUDE.md 约束不擅跑）。'
   : 'RECHECK：web Po 表与 DW 闭合格式不自洽（偏差 ' + maxDev2.toFixed(3) + '%）');

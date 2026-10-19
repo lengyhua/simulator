@@ -188,8 +188,8 @@ describe('pipeline — Al.xrd 全谱验收（T07，λ=1.54056、q=0.10 σ、3–
   });
 
   it('验收 7（绝对强度回归）：峰顶 = I_hkl（峰顶归一形式，无 1/(q√2π) 密度因子）', () => {
-    // 实证来源：原程序 2026-10-16 新存 `ref-temp/Al.xrd`（与 `samples/Al.xrd`
-    // 逐字节一致）峰值 = 152557 = 离散反射 I_hkl 本身；GUI 曲线同口径。
+    // 实证来源：原程序 2026-10-16 保存 `samples/Al.xrd`
+    // 峰值 = 152557 = 离散反射 I_hkl 本身；GUI 曲线同口径。
     // 若回归到 help RTF 公式(6) 文字的密度归一 1/(q√2π)，峰顶会变成
     // 152557/(0.10·√(2π)) ≈ 608614（3.9894 倍），本测试即失败。
     const gridPeakValue = gridPeak(alPattern, 38.6272).intensity;
