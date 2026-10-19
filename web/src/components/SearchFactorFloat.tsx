@@ -28,6 +28,7 @@ import {
   YAxis,
 } from 'recharts';
 
+import { downloadTextFile } from '@/lib/download';
 import {
   computeSearchFactor,
   elementSymbols,
@@ -127,14 +128,10 @@ export function SearchFactorFloat({ open, onClose }: { open: boolean; onClose: (
     if (!result || !maxima) {
       return;
     }
-    const text = formatSearchFactorReport(result);
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${result.species}_${result.radiation}_factor.txt`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    downloadTextFile(
+      `${result.species}_${result.radiation}_factor.txt`,
+      formatSearchFactorReport(result),
+    );
   }, [result, maxima]);
 
   const visibleRows = result ? result.rows.slice(0, MAX_TABLE_ROWS) : [];

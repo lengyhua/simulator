@@ -95,6 +95,56 @@ function orbitImages(
 }
 
 /**
+ * Legacy report-grid quantization for the powder path.
+ *
+ * Byte-confirmed in `CalcXRD.exe` (VA 0x47875c–0x4787b5, 2026-10-19):
+ *
+ * ```text
+ *   fld  [ebx+0x3fa8]              ; λ
+ *   fdiv dword [0x4787e4]          ; ÷ 2.0
+ *   fdiv qword [ebx+esi*8+0x27228] ; ÷ d        → sinθ
+ *   call 0x427170                  ; ArcSin(x) = ArcTan2(x, Sqrt(1−x²))
+ *   fmul dword [0x4787e4]          ; × 2.0
+ *   fld  xword [0x4787d0]          ; π
+ *   fdivp st(1)                    ; 2θ_rad / π
+ *   fmul dword [0x4787dc]          ; × 180.0
+ *   fmul dword [0x4787f4]          ; × 1000.0   ← K
+ *   call 0x402a10                  ; Round → Int64 (fistp qword)
+ *   fild qword [esp+0x134]
+ *   fdiv dword [0x4787f4]          ; ÷ 1000.0
+ *   fstp dword [ebx+esi*4+0x3e92c] ; → stored as Single
+ * ```
+ *
+ * So the angle the legacy powder path keeps is
+ *
+ * ```text
+ *   2θ₁ = Single( Round(2θ · 1000) / 1000 )
+ * ```
+ *
+ * (the `Round(2θ·1000)/1000` millidegree step of findings G11, now
+ * byte-confirmed rather than inferred, plus the Single-precision store), and
+ * the hkl List / RTF table then prints it with two decimals. That is why the
+ * shipped `Al.RTF` row for (222) reads `82.82`: `Single(82.825)` is
+ * 82.824996948…, which rounds **down**, whereas the single-crystal table —
+ * which prints three decimals from an exact angle — reads `82.830`.
+ *
+ * Every downstream powder quantity is then evaluated at that 2-decimal angle:
+ * the reported `d` is `λ/(2·sin(2θ₁/2))`, the Lorentz–polarization factor is
+ * `Lp(2θ₁)` (so the reported peak height is the broadened crest at 2θ₁), and
+ * the Gaussian is centred on 2θ₁. Verified value-for-value against all six
+ * Al(111…400) rows of `Al.RTF` (2θ, d at 4 dp, I at 1 unit).
+ *
+ * Note this deliberately makes the reported `d` slightly inconsistent with the
+ * cell (a/√N, printed by the single-crystal table); the structure factor still
+ * uses the exact `d` via `s = 1/(2d)`, exactly as the legacy code does.
+ */
+export function legacyPowderReportAngle(twoThetaDeg: number): number {
+  const milliDeg = Math.round(twoThetaDeg * 1000) / 1000;
+  // Math.fround = the legacy Single store at [ebx+esi*4+0x3e92c].
+  return Math.round(Math.fround(milliDeg) * 100) / 100;
+}
+
+/**
  * Computes the full powder XRD pattern for a crystal under `params`.
  *
  * @throws Error on invalid parameters, an invalid cell, an unknown Wyckoff
@@ -171,15 +221,22 @@ export function computeXRDPattern(crystal: Crystal, params: XrdParams): XRDPatte
         if (f2 < F2_ABSOLUTE_FLOOR) {
           continue;
         }
-        const intensity = reflectionIntensity(twoTheta, f, images.length, {
+        // Legacy powder path reports and broadens at the 0.01°-grid angle, not
+        // at the exact Bragg angle — see legacyPowderReportAngle() above.
+        const reportTheta = legacyPowderReportAngle(twoTheta);
+        const reportD =
+          reportTheta > 0 && reportTheta < 180
+            ? params.lambda / (2 * Math.sin(degToRad(reportTheta / 2)))
+            : d;
+        const intensity = reflectionIntensity(reportTheta, f, images.length, {
           useLp: params.useLp,
         });
         candidates.push({
           h: rep[0],
           k: rep[1],
           l: rep[2],
-          d,
-          twoTheta,
+          d: reportD,
+          twoTheta: reportTheta,
           multiplicity: images.length,
           fRe: f.re,
           fIm: f.im,

@@ -5,6 +5,7 @@ import { parseCord } from './crystal';
 import { SAMPLE_CRYSTALS } from '@/data/samples';
 import { createDefaultParams } from './constants';
 import { computeXRDPattern } from './pipeline';
+import { dSpacing } from './structure_factor';
 import { parseXrd, serializeXrd } from './xrd_file';
 import type { Crystal, XrdParams, XRDPattern } from './types';
 
@@ -239,8 +240,10 @@ describe('pipeline — Al.xrd 全谱验收（T07，λ=1.54056、q=0.10 σ、3–
     // 接入 Factor.dat 真实离子系数后 (111) 由 −9.30% 改善到 −5.33%（中性近似）；
     // 再接入 FF.dat 的 F′F″ 色散修正（默认开启，与 GUI 默认勾选一致）后进一步
     // 逼近（M3 口径：DW×完整 f_eff，见 ghidra-reverse-findings.md §8.2）：
-    // 111 = 91.05（GUI 91，−0.06%）、311 = 19.22（GUI 19，+1.16%）、
-    // 331 = 8.80（GUI 9，−2.22%）。
+    // 111 = 91.03（GUI 91，+0.03%）、311 = 19.22（GUI 19，+1.15%）、
+    // 331 = 8.80（GUI 9，−2.24%）。坡位/强度按 legacy 报表网格口径取值
+    // （见 pipeline.ts legacyPowderReportAngle：Lp 在 0.01° 报表角上求值），
+    // 因此 (111) 由 91.05 微调为 91.03，更贴近 GUI 的整数 91。
     // 剩余偏差的主因是 FF.dat 无离子条目（Na1+/Cl1- 回退中性），差项放大所致，
     // 属已知近似上限（详见 docs/ff-dat-spec.md §5.7），非随机误差。
     // 按纪律带数据报告、不静默放宽——锁定实测值并量化与 GUI 的偏差。
@@ -251,9 +254,9 @@ describe('pipeline — Al.xrd 全谱验收（T07，λ=1.54056、q=0.10 σ、3–
       );
       return ((reflection?.intensityNorm ?? 0) / 100) * 1000;
     };
-    expect(permilleOf(1, 1, 1)).toBeCloseTo(91.05, 2); // GUI 91 (M3 legacy scalar, default)
-    expect(permilleOf(3, 1, 1)).toBeCloseTo(19.22, 2); // GUI 19 (M3, odd family)
-    expect(permilleOf(3, 3, 1)).toBeCloseTo(8.80, 2); // GUI 9 (M3, odd family)
+    expect(permilleOf(1, 1, 1)).toBeCloseTo(91.0275, 2); // GUI 91 (M3 legacy scalar, default)
+    expect(permilleOf(3, 1, 1)).toBeCloseTo(19.2186, 2); // GUI 19 (M3, odd family)
+    expect(permilleOf(3, 3, 1)).toBeCloseTo(8.7988, 2); // GUI 9 (M3, odd family)
     // 与 GUI 偏差锁定（离子回退近似上限）：
     expect(Math.abs(permilleOf(1, 1, 1) - 91) / 91).toBeLessThan(0.02);
     expect(Math.abs(permilleOf(3, 1, 1) - 19) / 19).toBeLessThan(0.06);
@@ -295,10 +298,41 @@ describe('pipeline — Al.xrd 全谱验收（T07，λ=1.54056、q=0.10 σ、3–
     expect(strongest.intensityNorm).toBe(100);
   });
 
-  it('d 值与 Bragg 定律：d(111) = a/√3，2θ 与 asin(λ/2d) 一致', () => {
+  it('d 与 2θ：报表 d 由 legacy 报表角反算，晶面间距本身仍是 a/√3', () => {
     const r111 = alPattern.reflections.find((r) => r.h === 1 && r.k === 1 && r.l === 1);
-    expect(r111?.d).toBeCloseTo(4.0339 / Math.sqrt(3), 10);
-    expect(r111?.twoTheta).toBeCloseTo(38.6272, 3);
+    // 报表 2θ 落在 0.01° 网格上（legacyPowderReportAngle）；d 列由该角反算，
+    // 与 Al.RTF 的 2.3288 逐值一致（晶胞精确值 a/√3 = 2.3290 见 single 表）。
+    expect(r111?.twoTheta).toBeCloseTo(38.63, 6);
+    expect(r111?.d).toBeCloseTo(1.54056 / (2 * Math.sin((38.63 / 2) * (Math.PI / 180))), 10);
+    // 晶面间距公式本身未被改动：直接调用 dSpacing 仍是 a/√3 的精确值。
+    expect(dSpacing(al, 1, 1, 1)).toBeCloseTo(4.0339 / Math.sqrt(3), 10);
+  });
+
+  it('与原程序 Al.RTF 六峰逐值一致（2θ 2 位 / d 4 位 / I 整数 / I·Io⁻¹ 千分制）', () => {
+    // 基准：D:/Users/admin/Desktop/Al.RTF（原 CalcXRD.exe powder List 导出），
+    // 列序 2θ(2dp) d(4dp) I I/Io hkl 列表。
+    const rtf: Array<[string, number, number, number, number, number]> = [
+      ['111', 38.63, 2.3288, 152557, 1000, 8],
+      ['200', 44.9, 2.0171, 71693, 470, 6],
+      ['220', 65.38, 1.4262, 40648, 266, 12],
+      ['311', 78.59, 1.2163, 43172, 283, 24],
+      ['222', 82.82, 1.1645, 12165, 80, 8],
+      ['400', 99.6, 1.0085, 5681, 37, 6],
+    ];
+    const byAngle = [...alPattern.reflections].sort((a, b) => a.twoTheta - b.twoTheta);
+    expect(byAngle).toHaveLength(rtf.length);
+    byAngle.forEach((r, i) => {
+      const [hkl, twoTheta, d, intensity, io, mult] = rtf[i];
+      expect(`${r.h}${r.k}${r.l}`).toBe(hkl);
+      expect(r.twoTheta.toFixed(2)).toBe(twoTheta.toFixed(2));
+      expect(r.d.toFixed(4)).toBe(d.toFixed(4));
+      expect(Math.round(r.intensity)).toBe(intensity);
+      expect(Math.round(r.intensityNorm * 10)).toBe(io);
+      expect(r.multiplicity).toBe(mult);
+    });
+    // 同时对齐 samples/Al.xrd 的网格峰高（0.01° 网格最大值）。
+    const idx = alPattern.twoTheta.findIndex((v) => Math.abs(v - 38.63) < 1e-9);
+    expect(Math.round(alPattern.intensity[idx])).toBe(152557);
   });
 });
 
@@ -424,12 +458,13 @@ describe('pipeline — 其他样品与参数分支', () => {
       p.reflections.find((r) => r.h === h && r.k === k && r.l === l)?.intensityNorm ?? -1;
     // 本实现（标准 Lp + Factor.dat f₀ + F′F″ 色散修正默认开启 + 逐原子 B=1，
     // M3 口径 DW×完整 f_eff，见 ghidra-reverse-findings.md §8.2）：
-    // 有 Lp 时 (111)/(200) = 2.1286（GUI 实测原程序 List 152557/71693 = 2.128，
-    // 偏差 0.04%）；无 Lp 时 = (mult 8/6)·(|F|² 比，热因子与
-    // 色散含于 |F|² 内) = 1.5202。
+    // 有 Lp 时 (111)/(200) = 2.127932（legacy 报表网格角求 Lp，
+    // GUI 实测原程序 List 152557/71693 = 2.127941，偏差 4e-4%）；
+    // 无 Lp 时 = (mult 8/6)·(|F|² 比，热因子与
+    // 色散含于 |F|² 内) = 1.520226。
     // （残差分析见强度验收测试说明。）
-    expect(pick(withLp, 1, 1, 1) / pick(withLp, 2, 0, 0)).toBeCloseTo(2.1286, 3);
-    expect(pick(withoutLp, 1, 1, 1) / pick(withoutLp, 2, 0, 0)).toBeCloseTo(1.5202, 3);
+    expect(pick(withLp, 1, 1, 1) / pick(withLp, 2, 0, 0)).toBeCloseTo(2.127932, 5);
+    expect(pick(withoutLp, 1, 1, 1) / pick(withoutLp, 2, 0, 0)).toBeCloseTo(1.520226, 5);
   });
 
   it('λ 变更 → 峰位整体左移且 meta 反映新 λ', () => {

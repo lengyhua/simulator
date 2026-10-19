@@ -18,7 +18,7 @@
 | G8  | **single 表无 100000 归一化**：整个二进制不存在 100000.0f（float/double/ext80 全搜过）；表格显示 Round(                                                          | F                                                                                                                                                                                                                  | ²) 原值                                                                 | 全二进制常量扫描 + FUN_0047c0bf                                                    | 「single 表 100000 归一化」假设**不存在**                         |
 | G9  | 高斯核 **σ = q（度）**，表 399 点、峰顶 i=200、**归一化到 10000**，装箱除 shape[200]=10000 → 峰高=                                                       | F                                                                                                                                                                                                                  | ²                                                                       | FUN_00479450 全汇编；200.0@0x479584、0.01@0x479588、2π@0x479594、10000.0@0x4795a0 | 修正「归一到 max=1」表述；净效果（峰高=                                 |
 | G10 | 枚举覆盖**全部布拉格可见反射**：h/k/l∈[-N..N]，N=f(2a/λ)（θ_max=π/2，d_min=λ/2）；12000 上限；按 d **降序**排；**mult 隐含于等价 hkl 逐条列举** | 0x478229–0x4782a7、0x478660–0x478743                                                                                                                                                                             | 粉末 mult 的实现方式实证                                                 |                                                                                    |                                                                         |
-| G11 | 2θ = **Round(2·arcsin(λ/2d)·180/π·1000)/1000**（毫度）；装箱 0.01°/bin；显示窗 0.01°–100°                                                              | 0x47875c–0x4787b5；100.0@0x478d34                                                                                                                                                                                 | 精度与项目实现对齐                                                       |                                                                                    |                                                                         |
+| G11 | 2θ = **Single(Round(2·arcsin(λ/2d)·180/π·1000)/1000)**（毫度，**存 Single**）；装箱 0.01°/bin；显示窗 0.01°–100°                                      | **字节级实读 2026-10-19**：0x47875c–0x4787b5（`fld λ; fdiv 2.0; fdiv d` → `call 0x427170` ArcSin → `fmul 2.0; fld π; fdivp; fmul 180.0; fmul 1000.0` → `call 0x402a10` Round → `fild; fdiv 1000.0; fstp dword`）；100.0@0x478d34。**web 已实施**（§8.25） | 精度与项目实现对齐；**powder d/Lp/峰高全部在报表角上求值（关键）** |                                                                                    |                                                                         |
 | G12 | 无峰形分支 `Pattern[Round(2θ×100)] += \|F\|²` **无范围检查** → 2θ>100° 时越界写（legacy 潜在 bug）                                                         | 0x478bcd–0x478c23                                                                                                                                                                                                 | 仅 PeakShape 关闭且有 >100° 反射时触发                                  |                                                                                    |                                                                         |
 
 ## 1. 计算管线总览（活代码）
@@ -1224,6 +1224,85 @@ F′F″ 复选框（`SettingsPanel.tsx`），与 legacy 行为一致；`support
 不列弱峰"是否统一（是否单表也按 0.01 过滤不列弱峰行）——产品决策，
 公式层面已全部定案。
 
+### 8.25 powder 报表角口径字节级定案 + web 落地（2026-10-19 晚，用户 Al.RTF 对照）
+
+**现象**：single 表已逐值一致，但 powder 表/图谱与原程序 `Al.RTF` 仍有可
+见差异（2θ 相近但 d、I 对不齐）。
+
+**字节级根因**（`CalcXRD.exe` VA 0x47875c–0x4787b5 实读，file offset =
+VA − 0x400C00；CODE 段 VA=0x1000 / RawOff=0x400，注意**不是** VA−0x400000）：
+
+```
+fld  [ebx+0x3fa8]                    ; λ
+fdiv [0x4787e4 = 2.0]
+fdiv [ebx+esi*8+0x27228]             ; / d  → sinθ
+call 0x427170                        ; ArcSin(x) = ArcTan2(x, Sqrt(1−x²))
+                                     ;   （fsqrt@0x42718f, fpatan@0x4271b9）
+fmul [0x4787e4 = 2.0]                ; ×2
+fld  [0x4787d0 = π]; fdivp           ; /π
+fmul [0x4787dc = 180.0]              ; → 度
+fmul [0x4787f4 = 1000.0]             ; → 毫度
+call 0x402a10                        ; Round → Int64 (fistp qword)
+fild qword; fdiv [0x4787f4 = 1000.0] ; 回除
+fstp dword [ebx+esi*4+0x3e92c]       ; ★ 存为 Single（32 位）
+```
+
+三点关键结论：
+1. **2θ 先量化到毫度再 Round**，且**以 Single 存储**（`fstp dword`），
+   web 侧对应 `Math.fround(Round(2θ·1000)/1000)`；报表再取 2 位小数。
+   → `legacyPowderReportAngle()`（`pipeline.ts`）。
+2. **报表 d 由报表角反算**：`d = λ/(2·sin(2θ_report/2))`，不是晶胞精确值
+   a/√N。例：Al (111) 报表 d=2.3288，而 a/√3=2.3290（single 表 3 位输出
+   82.830 vs powder 2 位向下取 82.82，同理）。
+3. **Lp、|F|² 乘因子、高斯峰中心全部在报表角上求值**，不是精确布拉格角。
+   因高斯核在中心取最大值 1，0.01° 网格上的最大值即等于 `I` 本身，
+   故 `Al.xrd` 网格 38.63 处 = 152557 = 报表 I。
+
+**代码落地**（`web/src/lib/xrd/pipeline.ts`）：`computeXRDPattern` 在
+`F² < 0.01` 过滤后改用 `reportTheta = legacyPowderReportAngle(twoTheta)`
+计算 `reportD`、`reflectionIntensity(reportTheta, …)` 与展宽中心；
+`structureFactor` 仍用精确 `d`（`s = 1/(2d)`）不作变更。
+
+**验收**（`pipeline.test.ts` 新增「与原程序 Al.RTF 六峰逐值一致」）：
+Al 六峰 hkl/2θ(2dp)/d(4dp)/I(整数)/I·Io⁻¹(千分)/mult 全中——
+111/38.63/2.3288/152557/1000/8、200/44.90/2.0171/71693/470/6、
+220/65.38/1.4262/40648/266/12、311/78.59/1.2163/43172/283/24、
+222/82.82/1.1645/12165/80/8、400/99.60/1.0085/5681/37/6；
+并断言网格 38.63 处 = 152557（对齐 `samples/Al.xrd`）。
+
+**连带基准更新**（带数据，非放宽容差）：NaCl 奇族 91.05→91.0275、
+19.22→19.2186、8.80→8.7988；Lp 比值 2.1286→2.127932、1.5202→1.520226；
+「d 与 2θ」用例改为「报表 d 由 legacy 报表角反算 + `dSpacing()` 仍是
+a/√3」双重断言。全量 **14 文件 177 项通过**，`tsc --noEmit` 退出码 0。
+
+### 8.26 导出 .xrd 生成死 `blob:` 链接、文件不落盘（2026-10-19）
+
+**现象**：Chrome 下载项出现 `blob:http://localhost/<uuid>`，无法打开，
+磁盘上也找不到文件（原实现在同一 tick 内 `URL.revokeObjectURL(url)`，
+blob 在浏览器取流前即失效 → 只留死条目、无文件）。
+
+**修复**（新增 `web/src/lib/download.ts`）：
+
+```ts
+const REVOKE_DELAY_MS = 10_000;
+const blob = new Blob([text], { type: mime });
+const url = URL.createObjectURL(blob);
+const anchor = document.createElement('a');
+anchor.href = url; anchor.download = fileName; anchor.rel = 'noopener';
+document.body.appendChild(anchor);   // 必须挂载，否则部分浏览器不触发
+anchor.click();
+anchor.remove();
+setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);  // 延迟回收
+```
+
+调用点三处：`XRDChart.tsx`（`<晶体名>.xrd`）、`SingleXrdFloat.tsx`
+（`_single.xrd`）、`SearchFactorFloat.tsx`（`_factor.txt`）。
+
+**实测**（headless Edge 9223 + 裸 CDP `Browser.setDownloadBehavior`
+allow 到临时目录，脚本 `tmp_dl_check.cjs`）：选 Al 样品 → 计算 → 点
+「导出 .xrd」→ `Browser.downloadProgress … state:"completed"`，
+**`Al.xrd` 184417 B 真实落盘**；文件首行 `Al`、38.6300 行 = 152557，
+与 `samples/Al.xrd` 一致。验证脚本属一次性临时件，已清理。
 
 
 | 项                                                                            | 状态                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -1244,3 +1323,5 @@ F′F″ 复选框（`SettingsPanel.tsx`），与 legacy 行为一致；`support
 | C3 Search Factor 对话框是否移植为 web UI 组件（§6 第 5 条）              | **已裁决：移植**（2026-10-19，用户确认；§6 第 5 条 + §8.19/§8.20）：公式口径已被 web 引擎覆盖（`cronie.ts` f₀ + `ff_data.ts` F′/F″），移植为 UI 包装层无新增计算逻辑；落地 `web/src/lib/xrd/cronie.ts` `computeSearchFactor()` + `web/src/components/SearchFactorFloat.tsx` + `CalcXrdPage` 第三浮动按钮，`verify-search-factor.ts` PASS（Na1+ CuKa1 2θ=53.00° 与 `007-Na+.rtf` 逐值 0.0000%），`cronie.test.ts` 新增 4 用例（165/165） |
 | B2 `cronie_data.ts`（IUCr/Cromer–Mann 手抄表）保留 or 删除              | **已裁决：保留**（2026-10-19，用户确认）：`cronie.test.ts` 用它做 f₀ 交叉校验（IUCr 表 vs Factor.dat 解码表，s=0/0.1/0.3/0.5 22 元素 <0.5%），是独立第二数据源；删除会失去该校验。保留为测试专用参照，引擎运行时不读（`cronie.ts` 头注释已注明）；零维护成本 |
 | 用户端 Al single 表「与原程序不一致」复现偏差（2026-10-19 21:00） | **已定案：陈旧客户端 bundle，非引擎问题**（§8.24）：用户导出文件（20:42）带 10-17 旧代码三重指纹（3 位小数 2θ、禁反射 I=0 行、M2 族 +1.87% 递增偏差）；当前引擎默认条件实跑六峰 **0.0000%** 整数级一致（`verify-user-al-single.ts` PASS）；dev server 实取模块验证服务当前代码。用户侧硬刷新/重开标签页即可；回归脚本已留档 |
+| powder 表/图谱与原程序 Al.RTF 差异（2θ、d、I 对不齐） | **已定案 + 已实施**（2026-10-19，§8.25）：VA 0x47875c–0x4787b5 字节级实读（`fmul 1000.0; call Round; fdiv 1000.0; fstp dword`）证明 legacy 的 2θ **量化到毫度并存为 Single**，且**报表 d 由该报表角反算、Lp 与峰高与高斯中心也全部在报表角上求值**（不是精确布拉格角）；`pipeline.ts` 新增 `legacyPowderReportAngle()` 并改造 `computeXRDPattern`；Al 六峰 hkl/2θ/d/I/I·Io⁻¹/mult **逐值全中 Al.RTF**，网格 38.63=152557 对齐 `samples/Al.xrd`；NaCl/Lp 三处基准带数据更新；14 文件 177 项通过 |
+| 导出 .xrd 生成死 `blob:` 链接、磁盘无文件 | **已定案 + 已实施 + 实测**（2026-10-19，§8.26）：根因是同 tick `revokeObjectURL` 使 blob 先失效；新增 `web/src/lib/download.ts`（挂载 anchor + 延迟 10 s 回收）并替换 3 处调用（`.xrd` / `_single.xrd` / `_factor.txt`）；headless Edge + CDP 实测 `downloadProgress state:"completed"`、**`Al.xrd` 184417 B 真实落盘**、首行 `Al`、38.6300 行 = 152557 |

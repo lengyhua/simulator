@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 
+import { downloadTextFile } from '@/lib/download';
 import { downsamplePattern } from '@/lib/xrd/downsample';
 import { serializeXrd } from '@/lib/xrd/xrd_file';
 import type { XRDPattern } from '@/lib/xrd/types';
@@ -212,14 +213,7 @@ export function XRDChart() {
     if (!crystal || !pattern) {
       return;
     }
-    const text = serializeXrd(crystal, pattern);
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${safeFileName(crystal.name)}.xrd`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    downloadTextFile(`${safeFileName(crystal.name)}.xrd`, serializeXrd(crystal, pattern));
   }, [crystal, pattern]);
 
   const body = (() => {

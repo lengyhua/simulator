@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { downloadTextFile } from '@/lib/download';
 import { computeSingleXRD, formatSingleXrdRow } from '@/lib/xrd/single_xrd';
 import { useCrystalStore } from '@/store/crystal-store';
 import { Float } from './Float';
@@ -34,13 +35,7 @@ export function SingleXrdFloat({ open, onClose }: { open: boolean; onClose: () =
       return;
     }
     const text = [result.header, '', ...result.rows.map((row) => formatSingleXrdRow(row))].join('\n');
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${crystal ? crystal.name : 'pattern'}_single.xrd`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    downloadTextFile(`${crystal ? crystal.name : 'pattern'}_single.xrd`, text);
   };
 
   return (
