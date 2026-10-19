@@ -149,19 +149,19 @@ Po/NaCl 导出的 2θ 列本身也与 λ=1.54056 有 ±(0.003~0.028)° 的系统
 已排除：f₀ 表错行（Σa+c 自检 Po=83.9985、Na1+=9.9997、Cl1-=17.9944、
 Al=12.9986 全过）、色散行错配（Po/Pa 行均试过）、Lp 变体、DW 变体。
 复现实验方案：以当前 samples/Po.cord、NaCl.cord 重新驱动原程序
-（Thermal 开、B=1、CuKa1）导出 single 表，与 `ref-temp/single-xrd/` 存档
+（Thermal 开、B=1、CuKa1）导出 single 表，与（已删除的 ref-temp 目录中的）存档
 逐值比对；若复现导出与存档不同，则确认为存档生成参数差异。
 
 > **§6 状态（2026-10-19 更新，见 `ghidra-reverse-findings.md` §8.13）**：
 > - NaCl 行（19.7%）已裁决：**非 legacy 真实残差**——权威 ref-data
 >   025/026 下 web 物理正确口径（含岩盐相位）逐峰 <0.01%；19.7% 是
 >   早期全同相近似模型 `(f_Na+f_Cl)²` 的历史残差，"存档 111 族最强"
->   读自另一组 ref-temp 存档（生成参数与 025 不同），被 025/026 证伪。
+>   读自另一组（已删除的 ref-temp 目录中的）存档（生成参数与 025 不同），被 025/026 证伪。
 >   2026-10-19 全 8 条 NaCl ref-data（025–032，含 N≥16 高 2θ 尾峰，
 >   `web/scripts/verify-tail-peaks.ts`）× 全 10 峰 = **80 点 0.0000%**。
 > - Po 行（21.2%）已归因（§8.16）：**非 legacy 公式缺陷**——web 引擎
 >   Po B=1/B=0 cross-ratio 与 DW 闭合格式 `exp(−2B(N−1)/(4a²))`（Nref=1，
->   primitive 单质）自洽 7 点 0.0000%；21.2% 残差 = ref-temp Po-221
+>   primitive 单质）自洽 7 点 0.0000%；21.2% 残差 =（已删除的 ref-temp 目录中的）Po-221
 >   存档 B≈1.55 与 samples/Po.cord B=1 不匹配（N=11 点 B 差 21.79%，
 >   同量级）。`web/scripts/verify-po-model.ts` PASS。最终逐值闭合仍需
 >   GUI 实机复跑 Po-221（repo 无权威 Po ref-data，CLAUDE.md 约束不
@@ -178,7 +178,7 @@ Al=12.9986 全过）、色散行错配（Po/Pa 行均试过）、Lp 变体、DW 
    复刻怪癖（保真优先）vs 物理正确（岩盐 111 弱峰）。建议在 UI 标注。
 4. `single_xrd.ts` 头注释现存两句失实 claim 需勘误：
    (a) 「GUI-verified … `|F|²·mult` … all ≤0.6% deviation」——与
-   `ref-temp/single-xrd/Al-225` 实测矛盾（mult 假设最大偏差 202.9%）；
+   `ref-data/single-xrd/Al-225（001–018 档）` 实测矛盾（mult 假设最大偏差 202.9%）；
    (b) `SingleXrdFloat.tsx` 注释引用的「docs 开放项」在
    `single_xrd.ts` 头注释中并不存在（失效引用）。
 5. DATA-REFERENCE.md §4 #10 已按本报告更正（公式、Lp 口径、偏差量级）。
