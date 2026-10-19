@@ -119,10 +119,12 @@ export function computeSingleXRD(crystal: Crystal, params: XrdParams): SingleXrd
     useThermal: params.useThermal,
     useDispersion: params.useAnomalous,
     dispersionMode: params.dispersionMode,
-    // Legacy scalar dispersion form (byte-confirmed 0x47c804–0x47c83e):
-    // f_eff = f₀+F′+0.5·F″²/(f₀+F″). Use 'complex' for physically correct
-    // multi-element structures (NaCl etc.).
-    dispersionForm: params.dispersionForm,
+    // Legacy scalar M3 form (byte-confirmed 0x47c804–0x47c83e; D 乘整个 f_eff
+    // 括号一次，括号内 f₀ 为原值，§8.2/§8.9）。单表逐值复刻原程序口径，
+    // 钉死 legacy（complex 增强形式 f″ 不进 DW，单原子 Al 上系统性偏高
+    // 0.1–1.9%，与原程序 0.000% 口径不符）。complex 仅用于 powder 管线
+    // 多原子物理正确场景，不在 single XRD 单表启用。
+    dispersionForm: 'legacy' as const,
     // Rock-salt odd-family rule (confirmed 2026-10-17, NaCl ref-data 025–032):
     // odd (h+k+l) reflections drop the f″ imaginary part. No-op for
     // single-element crystals (no parity-dependent f″ cancellation).
