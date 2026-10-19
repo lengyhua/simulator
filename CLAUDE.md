@@ -60,7 +60,9 @@ Plain text, one field per line, in this exact order:
 The element block repeats for each atom. See `samples/Al.cord`, `samples/NaCl.cord`, `samples/BaTiO3.cord`, `samples/Po.cord`.
 
 Note: the 7th atom field is the **thermal factor B** (the program's atom-table
-"B" column, default 1), applied per atom as `f = f₀·exp(−B·sin²θ/λ²)` — it is
+"B" column, default 1), applied per atom as `f_eff = exp(−B·s²)·(f₀+F′+0.5F″²/(f₀+F″))`
+where `s = sinθ/λ` (Debye–Waller multiplies the **entire** f_eff bracket, M3
+byte-level form, `docs/ghidra-reverse-findings.md` §8.2/§8.9) — it is
 NOT a multiplicity (earlier versions of this file mislabeled it). B is a
 per-atom parameter; there is no global B setting.
 
@@ -156,9 +158,13 @@ RTF file (not plain text). Contains the full list of formulas the program implem
 
 1. I = I₀ · K · Lp · |F_hkl|²
 2. F_hkl = Σⱼ fⱼ · exp(2πi(hxⱼ + kyⱼ + lzⱼ))
-3. f = f₀ · exp(−B sin²θ/λ²)  (thermal factor)
+3. f = f₀ · exp(−B sin²θ/λ²)  (thermal factor — the **help RTF** writes this on f₀ only;
+   the binary's actual code applies exp(−B·s²) to the entire f_eff bracket,
+   i.e. M3 `f_eff = exp(−B·s²)·(f₀+F′+0.5F″²/(f₀+F″))`, `docs/ghidra-reverse-findings.md` §8.2/§8.9)
 4. f(sinθ/λ) = Σ₍ᵢ₌₁..₄₎ aᵢ·exp(bᵢ(sinθ/λ)²) + C
-5. f = f₀ + F′ + 0.5·F″²/(f₀+F′)  (anomalous correction)
+5. f = f₀ + F′ + 0.5·F″²/(f₀+F′)  (anomalous correction — help RTF writes the denominator as f₀+F′,
+   a transcription artifact; the binary's actual code uses denominator f₀+F″,
+   `docs/ghidra-reverse-findings.md` §8.19)
 6. Lorentz–polarization factor Lp
 7. Gaussian peak-shape function for converting discrete hkl to a continuous pattern
 
@@ -192,8 +198,9 @@ If reimplementing the calculation pipeline, the order is:
 2. For each hkl reflection:
    a. Look up space-group systematic absences from `Wyckoff` table
    b. Compute structure factor F_hkl = Σⱼ fⱼ·exp(2πi(hx+ky+lz)) using multipliers from the SG's Wyckoff site
-   c. Apply thermal factor per atom: fⱼ = f₀·exp(−Bⱼ·sin²θ/λ²)  (Bⱼ from the atom's own B field)
-   d. Apply anomalous correction: f = f₀ + F′ + 0.5·F″²/(f₀+F′) using `Factor.dat`
+   c. Apply thermal factor to the WHOLE scalar f_eff (byte-level M3):
+      fⱼ = (f₀+F′+0.5F″²/(f₀+F″))·occ·exp(−Bⱼ·sin²θ/λ²)  (Bⱼ from the atom's own B field)
+   d. Anomalous correction from `FF.dat` (not Factor.dat): f_eff = f₀+F′+0.5F″²/(f₀+F″) — denominator is f″ (the help RTF's f₀+F′ is a transcription artifact; `ghidra-reverse-findings.md` §8.19)
    e. Compute Lorentz–polarization factor Lp
    f. I = I₀·K·Lp·|F|²
 3. Convert discrete hkl intensities to a continuous 2θ pattern using the Gaussian peak function

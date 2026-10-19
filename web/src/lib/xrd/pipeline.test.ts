@@ -238,8 +238,9 @@ describe('pipeline — Al.xrd 全谱验收（T07，λ=1.54056、q=0.10 σ、3–
     // 全奇指数峰的 F = f_Na − f_Cl（差项），对 F′/f₀ 的微小差异极敏感。
     // 接入 Factor.dat 真实离子系数后 (111) 由 −9.30% 改善到 −5.33%（中性近似）；
     // 再接入 FF.dat 的 F′F″ 色散修正（默认开启，与 GUI 默认勾选一致）后进一步
-    // 逼近：111 = 91.9（GUI 91，−0.1%）、311 = 20.1（GUI 19，+5.7%）、
-    // 331 = 9.3（GUI 9，+3.6%）。
+    // 逼近（M3 口径：DW×完整 f_eff，见 ghidra-reverse-findings.md §8.2）：
+    // 111 = 91.05（GUI 91，−0.06%）、311 = 19.22（GUI 19，+1.16%）、
+    // 331 = 8.80（GUI 9，−2.22%）。
     // 剩余偏差的主因是 FF.dat 无离子条目（Na1+/Cl1- 回退中性），差项放大所致，
     // 属已知近似上限（详见 docs/ff-dat-spec.md §5.7），非随机误差。
     // 按纪律带数据报告、不静默放宽——锁定实测值并量化与 GUI 的偏差。
@@ -250,9 +251,9 @@ describe('pipeline — Al.xrd 全谱验收（T07，λ=1.54056、q=0.10 σ、3–
       );
       return ((reflection?.intensityNorm ?? 0) / 100) * 1000;
     };
-    expect(permilleOf(1, 1, 1)).toBeCloseTo(91.9, 1); // GUI 91
-    expect(permilleOf(3, 1, 1)).toBeCloseTo(20.1, 1); // GUI 19
-    expect(permilleOf(3, 3, 1)).toBeCloseTo(9.3, 1); // GUI 9
+    expect(permilleOf(1, 1, 1)).toBeCloseTo(91.05, 2); // GUI 91 (M3 legacy scalar, default)
+    expect(permilleOf(3, 1, 1)).toBeCloseTo(19.22, 2); // GUI 19 (M3, odd family)
+    expect(permilleOf(3, 3, 1)).toBeCloseTo(8.80, 2); // GUI 9 (M3, odd family)
     // 与 GUI 偏差锁定（离子回退近似上限）：
     expect(Math.abs(permilleOf(1, 1, 1) - 91) / 91).toBeLessThan(0.02);
     expect(Math.abs(permilleOf(3, 1, 1) - 19) / 19).toBeLessThan(0.06);
@@ -421,13 +422,14 @@ describe('pipeline — 其他样品与参数分支', () => {
     const withoutLp = computeXRDPattern(al, { ...alParams, useLp: false });
     const pick = (p: XRDPattern, h: number, k: number, l: number): number =>
       p.reflections.find((r) => r.h === h && r.k === k && r.l === l)?.intensityNorm ?? -1;
-    // 本实现（标准 Lp + Factor.dat f₀ + F′F″ 色散修正默认开启 + 逐原子 B=1）：
-    // 有 Lp 时 (111)/(200) = 2.1266（GUI 实测原程序 List 152557/71693 = 2.128，
-    // 偏差 0.06%，色散开启后更贴合）；无 Lp 时 = (mult 8/6)·(|F|² 比，热因子与
-    // 色散含于 |F|² 内) = 1.5188。
+    // 本实现（标准 Lp + Factor.dat f₀ + F′F″ 色散修正默认开启 + 逐原子 B=1，
+    // M3 口径 DW×完整 f_eff，见 ghidra-reverse-findings.md §8.2）：
+    // 有 Lp 时 (111)/(200) = 2.1286（GUI 实测原程序 List 152557/71693 = 2.128，
+    // 偏差 0.04%）；无 Lp 时 = (mult 8/6)·(|F|² 比，热因子与
+    // 色散含于 |F|² 内) = 1.5202。
     // （残差分析见强度验收测试说明。）
-    expect(pick(withLp, 1, 1, 1) / pick(withLp, 2, 0, 0)).toBeCloseTo(2.1266, 3);
-    expect(pick(withoutLp, 1, 1, 1) / pick(withoutLp, 2, 0, 0)).toBeCloseTo(1.5188, 3);
+    expect(pick(withLp, 1, 1, 1) / pick(withLp, 2, 0, 0)).toBeCloseTo(2.1286, 3);
+    expect(pick(withoutLp, 1, 1, 1) / pick(withoutLp, 2, 0, 0)).toBeCloseTo(1.5202, 3);
   });
 
   it('λ 变更 → 峰位整体左移且 meta 反映新 λ', () => {

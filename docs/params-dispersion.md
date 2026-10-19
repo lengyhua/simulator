@@ -11,8 +11,10 @@
 | 聚合入口 | `dispersion.ts:144 getDispersion(el, λ, mode)` |
 | mode 语义 | `fidelity`（默认，仅 FF.dat）/ `extended`（含 Cr/Fe Henke + 离子近似） |
 | 原始来源 | `FF.dat`（9568 B = **92 × 104 B**，8 B ShortString + 12 × double） |
-| 已知缺陷 | **Ce(Z=58) Cu Kα1 f′ = −1.087 录入缺陷**（保真保留，修正 ≈−1.88） |
+| 已知缺陷 | **Ce(Z=58) Cu Kα1 f′ = −1.087 录入缺陷**（保真保留，修正 ≈−1.88）；**Er(Z=68) Cu Kα1 f″ = 9.943 录入缺陷**（保真保留，IUCr 3.937，`DATA-REFERENCE.md` §4 #14） |
+| legacy 列选择（Ghidra 实证 2026-10-17） | 按 ComboBox **ItemIndex 硬编码 switch**（FUN_0047907c case 0–5），**不是**按 λ 最近匹配；FeKa1/FeKa 实读 **Co Kα1/Kα2 列**（λ/色散错配，#17）；两个加权项读 Kα2 列；MoKa1 笔误**不会**错配列 |
 | 无权威源 | 离子 F′/F″（近似）、Cr/Fe Kα（Henke f″ + f′=0） |
+| 汇编级全文 | [`ghidra-reverse-findings.md`](ghidra-reverse-findings.md)（G1–G12，含公式/常量/内存图） |
 
 ## 1. FF.dat 二进制结构（已完全解析）
 
@@ -45,22 +47,24 @@
 
 **λ 索引规则**：取最近列，**不做插值**（相邻列间可能横跨 K 边，插值无物理意义）。
 
-### 2.1 原程序 λ 下拉全列表（2026-10-17 Win32 提取）
+### 2.1 原程序 λ 下拉全列表（2026-10-17 Win32 提取 + Ghidra 列选择实证）
 
-主窗口与 Search Factor 对话框共用同一 6 项列表（`scripts/dump_main_combos.py` 经 CB_GETLBTEXT 精确提取，非截图识字）：
+主窗口与 Search Factor 对话框共用同一 6 项列表（`scripts/dump_main_combos.py` 经 CB_GETLBTEXT 精确提取，非截图识字）。
+「原程序实读列」= Ghidra 反编译 FUN_0047907c `switch(λ ComboBox ItemIndex)` 实证（2026-10-17）：
 
-| # | 项 | λ (Å) | FF.dat 对应列 |
-|---|---|---|---|
-| 0 | CuKa1 | 1.54056 | Cu Kα1（精确命中） |
-| 1 | CuKa（加权） | 1.54178 | 无精确列；web 最近列规则 → Cu Kα1（Δ0.0012） |
-| 2 | FeKa1 | 1.93604 | **无列**（web 最近列规则 → Co Kα2，Δ0.143） |
-| 3 | FeKa（加权） | 1.93736 | **无列**（web 最近列规则 → Co Kα2，Δ0.144） |
-| 4 | MoKa1 | **0.71930** ⚠ 录入笔误（标准 0.70930） | 若按最近 λ 会错配 Mo Kα2（Δ0.0057 < 0.010），待实证 |
-| 5 | MoKa（加权） | 0.71073 | 无精确列；web 最近列规则 → Mo Kα1（Δ0.0014） |
+| # | 项 | λ (Å) | web 最近列规则 | 原程序实读列（Ghidra） |
+|---|---|---|---|---|
+| 0 | CuKa1 | 1.54056 | Cu Kα1（精确命中） | pair0 = **Cu Kα1** ✓ |
+| 1 | CuKa（加权） | 1.54178 | Cu Kα1（Δ0.0012） | pair1 = **Cu Kα2** |
+| 2 | FeKa1 | 1.93604 | Co Kα2（Δ0.143） | pair4 = **Co Kα1** ⚠ 错配 |
+| 3 | FeKa（加权） | 1.93736 | Co Kα2（Δ0.144） | pair5 = **Co Kα2** ⚠ 错配 |
+| 4 | MoKa1 | **0.71930** ⚠ 录入笔误（标准 0.70930） | Mo Kα2（Δ0.0057） | pair2 = **Mo Kα1**（列正确，λ 值错） |
+| 5 | MoKa（加权） | 0.71073 | Mo Kα1（Δ0.0014） | pair3 = **Mo Kα2** |
 
 - MoKa1 笔误已登记 `DATA-REFERENCE.md` §4 #11；web `LAMBDA_TABLE.Mo` 采用正确值 0.70930（**有意偏离原程序**）。
 - web λ 表（Cu/Mo/Cr/Co/Fe 5 项）与原程序 6 项**结构不同**：原程序含 3 个加权平均项（CuKa/FeKa/MoKa）、无 Cr；web 有 Cr、无加权项。是否对齐见 `DATA-REFERENCE.md` §5.1 开放项。
-- 原程序选 FeKa 时 F′F″ 的行为未经实证（FF.dat 无 Fe 列；推测复选框置灰，与 web fidelity 模式一致）。
+- **原程序 FeKa 色散行为已实证关闭**（Ghidra FUN_0047907c）：选 FeKa1/FeKa 时 F′F″ 复选框**不置灰**（FF.dat 存在即装载），实读 **Co Kα1/Co Kα2 列**——λ 用 Fe 值（1.93604/1.93736）而色散取 Co 值，构成 λ/色散来源错配（legacy latent bug，`DATA-REFERENCE.md` §4 #17）。以 Fe(Z=26) 为例：选 FeKa1 时程序用 f′=−2.052、f″=0.568（Co Kα1 列），而非任何 Fe Kα 物理值。
+- **列选择机制**：按 ComboBox ItemIndex 硬编码 switch（case 0→pair0、1→pair1、2→pair4、3→pair5、4→pair2、5→pair3），**不存在按 λ 最近匹配的查列逻辑**。由此关闭两项旧推测：①「选 FeKa 复选框置灰」——错误，是静默错配；②「MoKa1 笔误导致错配 Mo Kα2 列」——错误，MoKa1（ItemIndex 4）实读 Mo Kα1 列（pair2），笔误只影响几何（峰位 ≈+1.4%），不影响色散列。
 
 ## 3. 组合公式：复数式（权威）
 
@@ -71,6 +75,35 @@ $$f = f_0 + F' + i\,F''\qquad\Rightarrow\qquad |F_{hkl}|^2=\Big|\sum_j \big(f_{0
 - 落地（`structure_factor.ts`）：`Re=A·cosφ−B·sinφ`，`Im=A·sinφ+B·cosφ`（A=f₀+ F′，B=F″）。
   ⚠ 只往 `im` 加 F″ 而漏 `re` 的 `−F″·sinφ` 项，对非中心对称结构（GaAs 200/222）有实误差。
 - **Debye–Waller 只施加于 f₀**，F′/F″ 为 s 无关常数（ITC 标准，已实证）。
+  ⚠ 但 legacy 代码实际把 DW 乘在**完整 f_eff**（含色散项）之后，宽于本条约定——见 §3.1。
+
+### 3.1 legacy 代码标量式（Ghidra 实证，2026-10-17）
+
+原程序**不用复数**：F′F″ 复选框开时先把色散折成实数标量，再做实数结构因子求和（`ghidra-reverse-findings.md` §2.2/§2.4，汇编 0x47894a–0x4789d8）：
+
+$$f_{\text{legacy}} = f_0 + f' + \frac{0.5\,f''^2}{f_0 + f''}\qquad\text{（分母是 }f_0+f''\text{，不是 help 的 }f_0+F'\text{）}$$
+
+且 Thermal 复选框开时，$e^{-Bs^2}$ 乘在**整个 $f_{\text{legacy}}$** 之后（0x4789dd–0x478a05：`FLD B; FCHS; FMUL s²; CALL exp; FMUL f_eff; FMUL occ`），再进 `Re/Im += f·cosφ/sinφ` 与 `|F|²=Re²+Im²`。
+
+三者口径对照（以 Ce：f₀≈52、f′=−1.88、f″≈9.7 计，完整数据表见 `ghidra-reverse-findings.md` §2.2）：
+
+| 来源 | 公式 | 数值 | 与精确模差 |
+|---|---|---|---|
+| **legacy 代码** | f₀+f′+0.5f″²/(f₀+**f″**) | 50.88 | −0.33% |
+| help (5) | f₀+F′+0.5F″²/(f₀+**F′**) | 51.06 | +0.02% |
+| 精确 / 项目 web | √((f₀+f′)²+f″²) | 51.05 | 0 |
+
+→ 代码分母用 f″ 是独立于 help 的实现细节（疑作者笔误，保真优先应复现）。**fidelity 模式若追求逐位复刻，需按 legacy 标量式 + DW 乘整项实现**（是否纳入见 `DATA-REFERENCE.md` §5.1 开放项）；现行复数式与 legacy 的强度差量级：单原子 ≤0.4%，多物种弱峰更大。
+
+**RTF 报表口径（2026-10-19 定案，`ghidra-reverse-findings.md` §8.19）**：
+`ref-data/factors/001-Al.rtf`「Fo after F1 & F2」列与计算管线**同式**
+（分母 f₀+F″），`001-Al.rtf` 三行数值对照残差 4.3e-8（= 报表 `%.9f`
+显示截断）；早期「报表故意用 help (5) 字面（分母 f₀+F′）」的说法已作废。
+help RTF 公式 (5) 字面分母 f₀+F′ 与程序实际实现（f₀+F″）确有差异，
+属 help 文档转写误差（§8.15 同类），不影响 fidelity 口径（代码以字节
+实读为准）。
+
+**双路径指令级实证**（2026-10-17，`ghidra-reverse-findings.md` §2.2/§2.3/§2.12）：粉末（FUN_004787f8，0x47894a–0x47899a）与 single（FUN_0047c6a0，0x47c7f2–0x47c842）两条管线**逐指令同构**——`FADD f′` → `FLD 0.5; FMUL f″; FMUL f″` → `FLD f₀; FADD f″` → `FDIVP` → `FADDP`，f′/f″ 槽位（0x3958/0x3960+16j）由装载器 FUN_0047907c 实证。并行 Ghidra 分析曾得出「无分母项、0.5F′²」的冲突结论，已被原始汇编裁决证伪（根因：其线性反汇编器把 SIB 字节 0xc3 并入位移，颠倒 f′/f″）。DW 侧同理：`FLD B; FCHS; FMUL s²; CALL exp; FMUL f_eff; FMUL occ`——e^(−Bs²) 乘在已含色散项的完整 f_eff 上。
 
 ## 4. 引擎接入（模式语义）
 

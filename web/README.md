@@ -26,7 +26,9 @@ src/
 │   ├── AtomTable        #   原子表格编辑（增删/元素/Wyckoff/坐标/占位）
 │   ├── SettingsPanel    #   计算参数（λ/q/复选框×4/B/扫描范围）
 │   ├── XRDChart         #   结果曲线（Recharts，≤2000 点保峰降采样 + hkl 参考线）
-│   └── HKLTable         #   离散衍射峰表（点击表头排序）
+│   ├── HKLTable         #   离散衍射峰表（点击表头排序）
+│   ├── SingleXrdFloat   #   single XRD 表浮层（hkl 表 → 归一到 max=100000）
+│   └── WyckoffFloat     #   Wyckoff 位次速查浮层（TFormWCF 复刻）
 ├── lib/
 │   ├── xrd/             # 计算引擎（纯函数，T03–T07）
 │   │   ├── crystal      #   .cord 解析/序列化（带行号错误）
@@ -48,8 +50,12 @@ tests/fixtures/Al.xrd    # 原程序参考谱（T07/T12 验收基准，9701 数�
 
 ## 计算口径
 
-- 结构因子 `F = Σ fⱼ·exp(2πi(hx+ky+lz))`，`fⱼ = f₀(s)·occ·exp(−B·s²)`，
-  `s = sinθ/λ`；Wyckoff 位置展开后消光自然涌现。
+- 结构因子 `F = Σ fⱼ·exp(2πi(hx+ky+lz))`，`s = sinθ/λ`；Wyckoff 位置展开后
+  消光自然涌现。原子项（legacy/fidelity 口径，字节级 M3 定案）：
+  `fⱼ = (f₀+f′+0.5f″²/(f₀+f″))·occ·exp(−Bⱼ·s²)`——DW 乘整个标量 f_eff
+  （分母用原值 f₀；`ghidra-reverse-findings.md` §8.2/§8.9）；complex 口径
+  （IT Vol C 复数式，DW 只乘 f₀，多元素晶体用）为 `fⱼ=(f₀·e^{−Bⱼs²}+f′)+i·f″`，
+  见 `src/lib/xrd/structure_factor.ts`。
 - 强度 `I = K·Lp·|F|²·mult`，K=1，`Lp = (1+cos²2θ)/(sin²θ·cosθ)`（标准式），
   mult 为 Laue 群等价面数（含 Friedel 对去重）。
 - 高斯展宽 `I(2θ) = Σ I_hkl·exp(−(2θ−2θ₀)²/2q²)`（峰顶归一，无 `1/(q√2π)`
@@ -62,9 +68,11 @@ tests/fixtures/Al.xrd    # 原程序参考谱（T07/T12 验收基准，9701 数�
   3–100°/0.01°。`DEFAULT_ATOM_THERMAL_B=1`（`constants.ts:53`）；旧 B=0.9 为
   缺 F′F′ 时被 B 吸收的标定产物，色散 ON 后最优 ≈1.0–1.03
   （`docs/audits/physics-audit.md` §5.6）。
-- 与原程序的已知偏差均以测试注释/汇报归档：NaCl (020)/(220)=1.52（原程序
-  3.25 的 mult 口径与之数学不兼容）；Mo Kα 111 峰位 17.52°（计划早期笔误
-  17.2° 已更正）。
+- 与原程序的历史偏差项已全部裁决归档（2026-10-19，
+  `../docs/ghidra-reverse-findings.md` §8.8 终表）：single 表 B 扫描 35 点
+  ≤0.006%、NaCl 8 条 ref-data 逐峰 0.000%、MoKa1 双值并存（legacy 保真
+  0.71930 / 物理正确 0.70930）、FeKa1→CoKa1 列错配按保真复刻；仅剩
+  Po 逐值闭合与 ref-data 036 异常两项待 GUI 实机复跑（低优先级）。
 
 ## 集成就绪契约（四条不变式，已逐条核验）
 
@@ -99,8 +107,9 @@ PROD chunk 中标题链接为 `href:"/"`；`dist/` 无 `/static/` 引用；
 ## 测试
 
 ```bash
-npm test           # 116 个测试：计算引擎（消光/mult/Lp/Al.xrd 六峰/round-trip/
-                   # 降采样/草稿同步）+ store 全 action 两路 + 默认参数口径
+npm test           # 161 个测试（12 文件）：计算引擎（消光/mult/Lp/Al.xrd 六峰/
+                   # round-trip/降采样/草稿同步/B 扫描 35 点）+ store 全 action
+                   # 两路 + 默认参数口径 + FF/Factor 解析 + 色散三模式
 npm run typecheck  # strict 模式 0 错误
 ```
 

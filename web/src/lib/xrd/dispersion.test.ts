@@ -42,15 +42,18 @@ describe('getDispersion — 查表与索引', () => {
     expect(pa.fDoublePrime).not.toBeCloseTo(po.fDoublePrime, 1);
   });
 
-  it('无对应波长的靶（Cr/Fe Kα）回退为 unsupported，f′=f″=0（fidelity 模式）', () => {
-    // 注意：fidelity 模式（默认）下 Cr/Fe 无 FF.dat 数据 → unsupported。
-    // extended 模式才会从 HENKE_CRF 取值（见下方 "extended mode" 用例）。
+  it('无对应波长的靶（Cr Kα；Fe Kα 走 G5 Co Kα1 错配）fidelity 模式行为', () => {
+    // Cr Kα（2.2897）距最近列 > 0.05 Å → 无数据 → unsupported。
     expect(getDispersion('Al', LAMBDA_CR, 'fidelity')).toEqual(
       { fPrime: 0, fDoublePrime: 0, supported: false, source: 'FF.dat' },
     );
-    expect(getDispersion('Fe', LAMBDA_FE, 'fidelity')).toEqual(
-      { fPrime: 0, fDoublePrime: 0, supported: false, source: 'FF.dat' },
-    );
+    // G5（§1/G5，byte-confirmed FUN_0047907c 装载器 switch）：legacy 在 Fe Kα1
+    // 时读 FF.dat 的 Co Kα1 列（Al: f′=0.279, f″=0.381），而非"最近列"。
+    // 这是 shipped 程序自身的 latent 错配；fidelity 模式保真复刻而非纠正。
+    const fe = getDispersion('Al', LAMBDA_FE, 'fidelity');
+    expect(fe.supported).toBe(true);
+    expect(fe.fPrime).toBeCloseTo(0.279, 3);
+    expect(fe.fDoublePrime).toBeCloseTo(0.381, 3);
   });
 
   it('未知元素回退为 unsupported，不抛错', () => {
@@ -61,11 +64,15 @@ describe('getDispersion — 查表与索引', () => {
   });
 });
 
-describe('hasDispersion — 波长覆盖判定', () => {
-  it('Cu / Mo Kα 支持，Cr / Fe Kα 不支持', () => {
+describe('hasDispersion — 波长覆盖判定（最近列口径，legacy 无 G5 错配）', () => {
+  it('Cu / Mo / Co Kα 支持，Cr Kα 不支持', () => {
     expect(hasDispersion(LAMBDA_CU)).toBe(true);
     expect(hasDispersion(LAMBDA_MO)).toBe(true);
+    // Co Kα1（1.78897）是 FF.dat 列之一，最近列命中 → 支持
+    expect(hasDispersion(1.78897)).toBe(true);
     expect(hasDispersion(LAMBDA_CR)).toBe(false);
+    // hasDispersion 走"最近列"口径（UI 灰化判定用），不含 G5 错配；
+    // G5 是 getDispersion fidelity 取值层的字节级行为，两者独立。
     expect(hasDispersion(LAMBDA_FE)).toBe(false);
   });
 
@@ -150,7 +157,9 @@ describe('structureFactor — F′F″ 复数式路径', () => {
     const s = sinThetaOverLambda(al, 1, 1, 1);
     const f0s = f0('Al', s); // useThermal:false → 无 Debye–Waller
     const off = structureFactor(al, 1, 1, 1, base);
-    const on = structureFactor(al, 1, 1, 1, { ...base, useDispersion: true });
+    // 复数式路径（IT Vol C form）需显式传 dispersionForm:'complex'
+    // （默认 'legacy' = 字节级标量式 f₀+F′+0.5F″²/(f₀+F″)，im=0）
+    const on = structureFactor(al, 1, 1, 1, { ...base, useDispersion: true, dispersionForm: 'complex' });
     const fp = getDispersion('Al', LAMBDA_CU).fPrime;
     const fpp = getDispersion('Al', LAMBDA_CU).fDoublePrime;
     // Al (111) 四个面心等效位相位均为 2π 整数倍 → e^{iφ}=1，复散射因子
