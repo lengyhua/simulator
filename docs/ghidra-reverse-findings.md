@@ -237,7 +237,7 @@ if Pattern[i] > 0:                                        ; 阈值 0.0@0x478d0c
 
 **cos(2θ) 的指令级证明**（粉末 0x478c7d–0x478ca4）：θ 算出后 `FLD 2.0; FMUL θ; CALL fcos` **做两次**再 FMULP 平方——即 cos²(2θ) 而非 cos²θ。
 
-**single 路径同式**（0x47c97e 起）：`λ/2 < d[i]` 过滤（0x47c9b1–0x47c9c1，JNC 跳过）；θ = arcsin(λ/2d)（`FUN_00427170`，m80 传参，0x47c9e1）；随后 `FLD 2.0; FMUL θ; CALL fcos` ×2（0x47c9eb/0x47c9ff）→ cos²(2θ)，`CALL fsin` ×2（0x47ca2a/0x47ca38）→ sin²θ，`CALL fcos` ×1 → cosθ；Lp **直接乘 |F|²**（逐反射），不清零、不装箱。
+**single 路径同式**（0x47c97e 起）：`λ/2 < d[i]` 过滤（0x47c9b1–0x47c9c1，JNC 跳过）；θ = fsin⁻¹(λ/2d)（`FUN_00427170`，**FPU arcsin 内联例程**（字节级：body 17 条 x87 指令含 `D8 2D` FLD/`D9 FA` FCOMP/`D8 C9` FSUB/`D9 E8` F2XM1 系），非字符串例程；此前 §6 注对 `FUN_004271c0`/`FUN_00402a10` 的 FPU 误标勘误，`FUN_00427170` 为正确 arcsin 地址，2026-10-19 实读 0x427170 file 0x26570）；随后 `FLD 2.0; FMUL θ; CALL fcos` ×2（0x47c9eb/0x47c9ff）→ cos²(2θ)，`CALL fsin` ×2（0x47ca2a/0x47ca38）→ sin²θ，`CALL fcos` ×1 → cosθ；Lp **直接乘 |F|²**（逐反射），不清零、不装箱。
 
 - 两个路径都只在复选框开时施加；θ 一律由几何反推，无查表。
 
@@ -348,7 +348,7 @@ Ghidra headless 关键参数（避坑）：`-noanalysis`（非 `-noanalyze`）�
 | φ=2π(hx+ky+lz)，                        | F                                        | ²=Re²+Im² (float32)                  | ✅ 双路径指令级               |
 | 0.01 硬阈值（粉末清零/single 显示过滤）   | ✅ 指令级                                | hkl 枚举范围/排序/mult 隐含             | ✅（N 的取整见下注）          |
 | λ 表 6 项硬编码（含 MoKa1 笔误）         | ✅ switch 级                             | 无 1000/100000 归一化                   | ✅ 全二进制常量扫描           |
-| Factor.dat / FF.dat / .cord 装载          | ✅ 装载器级（FUN_00478d48/FUN_0047907c） | arcsin / FRNDINT / hkl 上界函数         | ✅ 本轮补核（§2.6/2.8 引用） |
+| Factor.dat / FF.dat / .cord 装载          | ✅ 装载器级（FUN_00478d48/FUN_0047907c） | arcsin（FUN_00427170，FPU 内联）/ hkl 上界函数 | ✅ 本轮补核（§2.6/2.8 引用） |
 
 注：~~`FUN_00402a10` = FRNDINT（FPU 默认 round-half-even）~~、~~`FUN_004271c0` = `Round(x)` 后按 `Frac(x)<0.5` 再 −1 的边界调整~~ —— **两条均经 2026-10-19 字节实读证伪（勘误）**。
 字节级核验（Ghidra 地址 = VA+0x400000 基址，file offset = 0x400 + (addr−0x400000)；全文件 x87 扫描）：
@@ -356,6 +356,7 @@ Ghidra headless 关键参数（避坑）：`-noanalysis`（非 `-noanalyze`）�
 - `FUN_00402a10`（file 0x2e10）body 含 `rep movsb`（`F3 A4`）序列、**0 条 FPU 指令** —— 属 Delphi RTL 字符串/内存例程，非 FPU 取整。
 - `FUN_004271c0`（file 0x275c0）body 为字符串/堆例程（`mov ECX,[EBP−4]` + 多次 `call`）、**0 条 FPU 指令**，非 `Round` 边界调整。
 - 故 §6 注原「FRNDINT 平局行为 / `Frac<0.5` 阈值常量未解码」整条不适用：这两处 Ghidra 自动标签误指了 RTL 字符串函数（**直接证据：全文件 0 条 FRNDINT；两函数 body 0 条 x87 指令**；body 的字符串例程定性为读字节推断，未逐指令反汇编确认）。管线内真正的取整若存在，须从调用图定位实际 call site（`hkl` 上界/`N` 取整见 §6 表「hkl 枚举范围/排序」行），不影响已定案的 2θ/强度口径；`±1 毫度/1 bin` 的取整敏感性结论维持，但归因标签更正为「管线取整例程待从调用图定位，非 FUN_00402a10/FUN_004271c0」。
+- **arcsin 正确地址 = `FUN_00427170`**（file 0x26570，body 17 条 x87 指令含 FLD/FCOMP/FSUB/F2XM1 系），single 路径调用点 `0x47c9e1`（`CALL 0x427170`），powder 路径同式。`FUN_00427170` 与上述两个字符串例程（`FUN_004271c0`/`FUN_00402a10`）地址相近但功能完全不同，勿混淆。
 
 **仍未分析（均在强度管线之外，不影响上表任何结论）**：
 
