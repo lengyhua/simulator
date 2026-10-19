@@ -1,8 +1,7 @@
 /**
  * Gaussian peak broadening (plan §3.2 / T07), in the legacy program's own
  * parameterization (help formula 6, GUI-verified 2026-10-16, and
- * re-confirmed against a freshly saved legacy `.xrd` — `ref-temp/Al.xrd`,
- * byte-identical to `samples/Al.xrd`):
+ * re-confirmed against `samples/Al.xrd`):
  *
  *   I(2θ) = Σ_hkl I_hkl · exp(−(2θ − 2θ_hkl)² / (2q²))
  *
@@ -15,7 +14,7 @@
  * Gaussian so its *crest* equals the reflection intensity I_hkl; only the
  * wings (exp(−dx²/2q²)) are added to neighbouring grid points. Evidence:
  * the legacy GUI's own chart reads 152557 at the 38.63° crest, and a
- * legacy-saved `.xrd` (ref-temp/Al.xrd, byte-identical to samples/Al.xrd)
+ * legacy-saved `.xrd` (`samples/Al.xrd`)
  * carries 152557 at that same grid point. With a 1/(q·√2π) density
  * normalization the crest would read I_hkl/(q·√2π) ≈ 608614 for the same
  * data — a factor of 3.9894 = 1/(0.10·√(2π)) too high. The help RTF's

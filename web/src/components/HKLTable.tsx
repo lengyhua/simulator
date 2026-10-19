@@ -44,7 +44,7 @@ function compare(a: HKLReflection, b: HKLReflection, key: SortKey): number {
  *
  * - `I`     — raw reflection intensity I_hkl (K·Lp·|F|²·mult, K=1),
  *             same value the legacy program writes to the `.xrd` file's
- *             peak grid points (ref: `ref-temp/Al.xrd`).
+ *             peak grid points (ref: `samples/Al.xrd`).
  * - `I/Io`  — relative intensity with the strongest peak normalized to
  *             **1000** (the legacy List table's convention, e.g. Al:
  *             1000/470/266/283/80/37), as opposed to `intensityNorm`'s

@@ -9,18 +9,18 @@
  * "input" readout format (name / system / space group / a,b,c / α,β,γ).
  *
  * Intensity convention (verified 2026-10-17 against Al ref-data 001–019 and
- * NaCl B-level data set `ref-temp/single-xrd/NaCl-Blevels` —
- * `docs/DATA-REFERENCE.md` defect #10, 4组对照数据):
+ * NaCl B-level data set ref-data 025–032 — `docs/DATA-REFERENCE.md` defect
+ * #10, 4组对照数据; M3 DW scope settled 2026-10-19, §8.9):
  *
  *   I_hkl = 100000 · [Lp(2θ_hkl) · |F_hkl|²] / [Lp(2θ_ref) · |F_ref|²]
  *
- * where |F|² is the FULL complex structure-factor modulus
- * (f₀·e^(−B s²)+f′ + i·f″)², (h_ref,k_ref,l_ref) is the STRONGEST LIVE
- * (|F|>0) reflection of the whole scan range, and the orbit multiplicity
- * does NOT enter the formula. Measured max deviation vs. legacy:
- * 0.0% (Al B=0), 0.9% (Al B=0.5), 1.9% (Al B=1) across the five measured
- * 2θ; NaCl B=1,1 ≤6.5% on the high-2θ tail (known legacy defects #11/#12
- * aside).
+ * where |F|² = (Σ_j D·(f₀+F′+0.5F″²/(f₀+F″))·occ_j)² with D = exp(−B_j·s²)
+ * (M3: D multiplies the full f_eff bracket once; f₀ inside is unattenuated),
+ * (h_ref,k_ref,l_ref) is the STRONGEST LIVE (|F|>0) reflection of the whole
+ * scan range, and the orbit multiplicity does NOT enter the formula.
+ * Measured max deviation vs. legacy: 0.0% (Al B=0), 0.9% (Al B=0.5),
+ * 1.9% (Al B=1) across the five measured 2θ; NaCl B=1,1 ≤6.5% on the
+ * high-2θ tail (known legacy defects #11/#12 aside).
  */
 
 import { degToRad, radToDeg } from '@/lib/math';
@@ -83,8 +83,8 @@ function lp(twoThetaDeg: number): number {
  * Computes the full single-XRD table for `crystal` under `params`.
  *
  * Formula (verified 2026-10-17 against Al ref-data 001–019 and NaCl
- * ref-data 025 / `ref-temp/single-xrd/NaCl-Blevels`;
- * `docs/DATA-REFERENCE.md` defect #10):
+ * ref-data 025 / ref-data 032 (Fd off B=1,1 cleanest anchor);
+ * M3 DW scope settled 2026-10-19 §8.9):
  *
  *   I_hkl = 100000 · [Lp(2θ_hkl)·|F_hkl|²] / [Lp(2θ_ref)·|F_ref|²]   (L-P on)
  *   I_hkl = 100000 · [|F_hkl|²] / [|F_ref|²]                        (L-P off)
