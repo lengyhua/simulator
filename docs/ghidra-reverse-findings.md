@@ -222,15 +222,18 @@ FUN_00479450: q = StrToFloat(EditQ)                      ; Self+0x354
 - 常量：2.0@0x479584、0.01@0x479588、2π@0x479594、10000.0@0x4795a0；shape[200]@Self+0x56350。
 - **净效果**：每个反射以峰高 |F|²、FWHM=2.355q 度的高斯落入 0.01°/bin 的网格；`1/(q√(2π))` 前因子与 max 归一化、÷10000 相互抵消——**代码级证实项目 #9**（峰高 = I_hkl，与 q 无关的归一化处理自洽）。
 - **无 /Imax**：`FDIV [Self+0x56350]` 除的是 shape[200]=10000.0（我初看误判为 Imax，实为表内峰顶常量）。
-- **q 加载无 clamp**（2026-10-19 补实，§2.13 同批次）：`0x47947e` 字节
-  `8B 86 54 03 00 00` = `mov ESI,[ESI+0x354]`（EditQ 控件指针），紧随
-  `CALL <rel32>`（`StrToFloat`，返回 double），`FLD [EBP−0x10]` 装载 q。
-  其后 FPU 指令流（`DD 25` FLD/`DB 2D` FLD/`DE C9` FADD/`D9 E0` FXCH）
-  为 399 点 shape 表展开，**无 `FCOMI ST(i),ST(0)` 上界/下界校验**
-  （全 128 B 窗口内 FPU 比较仅 `DE C9`/`D9 E0` 加法交换，无 `DB 7D`
-  类 FCOMI）。`q ≤ 0` 时 web 引擎自动降级 δ 棒（`gaussian.ts` 头注释
-  `q ≤ 0 → 输出 δ 棒谱`），与 legacy `PeakShape` 关 + 高斯 `σ=q` 行为
-  等价（§8.22 表：PeakShape 关 → δ 棒；web `usePeakShape ? q : 0`）。
+- **q 加载**（2026-10-19 补实，§2.13 同批次；勘误 2026-10-19 第二轮）：
+  `0x47947c` 字节 `8B 86 54 03 00 00` = `mov ESI,[ESI+0x354]`（EditQ 控件
+  指针，权威日志 1182/1182 字节核对），紧随 `CALL <rel32>`（`StrToFloat`，
+  返回 double）装载 q。其后 FPU 指令流（`DD 25` FLD/`DB 2D` FLD/`DE C9`
+  FADD/`D9 E0` FXCH/`DD 45 F8` 等）为 399 点 shape 表展开。
+  **勘误**：初稿称"无 `FCOMI ST(i),ST(0)` 上界/下界校验"——**不成立**，
+  该窗口内 `0x4788a4` 处存在 FCOMI/FCOMP 比较（`0x4788a4 db 2d 88 95 47
+  00` = `FCOMI ST(5), [0x479588]` 型，比 `f` 对 0.5 常量），属 `f<0.5`
+  类判断，**非 q 的单调上/下界 clamp**。q 的 `q≤0→δ 棒` 降级是
+  **web 引擎行为**（`gaussian.ts` 头注释 `q ≤ 0 → 输出 δ 棒谱`，
+  `pipeline.ts` `usePeakShape ? q : 0`），**legacy 无此 guard**（legacy
+  PeakShape 关 → 直接 δ 棒，§8.22）。
 
 ### 2.8 Lp 因子（粉末 0x478c25–0x478cfe；single 0x47c97e–0x47ca77）【汇编·双路径 cos(2θ) 实锤】
 
@@ -1099,28 +1102,33 @@ F′F″ 复选框（`SettingsPanel.tsx`），与 legacy 行为一致；`support
   逐值闭合。
 - 登记至缺陷簿（`DATA-REFERENCE.md` #17 新增）。
 
-### 2.13 晶格参数装载器 `FUN_00477f90`：6 个 double 装载（2026-10-19 补实）
+### 2.13 晶格参数装载器 `FUN_00477f90`（§2 偏移表 `Self+0x408..0x430`）
 
-`FUN_00477f90`（RVA 0x477f90，file 0x77390，§2 偏移表 `Self+0x408..0x430`）
-字节实读：
+`FUN_00477f90`（RVA 0x477f90，file 0x77390）字节实读（勘误 2026-10-19 第二轮，
+基于 1182/1182 权威日志字节核对）：
 
-- 6 个 `FLD [Self+disp32]`（i386 编码 `DD 9B <disp32>`）装载顺序
-  **a(0x408) b(0x410) c(0x418) α(0x420) β(0x428) γ(0x430)**，与
-  `.cord` 第 3/4 行 6 字段一致。
-- 每两个 `FLD` 之间有一次 `mov ECX,[Self+0x314/0x318/0x31C/0x320/0x324]`
-  （控件对象指针区）→ `CALL <rel32>`（虚拟方法，Delphi `GetTextToDouble`
-  类输入解析/校验），随后 `FLD [Self+X]` 装载 double。
-- 每次 `FLD` 前有 `mov EDX,[EBP-4/-8/...]`（本地栈帧写入），对应
-  Delphi 过程参数传递；`8d 83 04 04 00 00` = `lea EAX,[EBX+0x404]`
-  为控件文本区基址计算。
-- 非正值校验：a/b/c 经 UI 输入校验（`CALL` 虚方法），α/β/γ 无显式
-  非正值检查，非正角由 Lp/arcsin 越界防护（Po 崩溃 §8.23 同源）。
+- 函数体前 0x100 字节仅含 `0x408` 与 `0x410` 两个常量（非 §2 偏移表所述
+  6 个 0x408..0x430 的完整 6-double 装载）；函数体**无 x87 `FLD [Self+disp32]`
+  序列**（全 128 B 窗口扫描无 `DD 9B` 型指令）。
+- 推断：a/b/c/α/β/γ 的 double 装载分散在调用方 `FUN_004787f8`（原子循环）/
+  `FUN_004780b4`（hkl 枚举）的栈帧内，或经 `Self+0x408..0x430` 字段在
+  **其他**指令处 `FLD`；`FUN_00477f90` 本身可能是 UI 输入校验 / 文本→double
+  解析例程，而非 6 字段 direct load。
+- 控件对象指针区 `Self+0x314/0x318/…` + `CALL <rel32>` 虚方法模式（初稿
+  已述）仍成立；`8d 83 04 04 00 00` = `lea EAX,[EBX+0x404]` 控件文本区基址
+  计算成立。
+- **初稿"非正值 JBE 回跳 +0x20 校验 / a/b/c 经 UI 校验"句已删除**——该
+  JBE 模式未在函数体中找到，`JBE`/`JBE` 短跳仅 1 条（`0x79` `JNE` 型，
+  body+0xb7），非 6 字段非正值校验序列。
 
 **与 web 侧一致**：`crystal.ts` 解析 `.cord` 后直接存入 `a/b/c/α/β/γ`
 6 个 double，`dSpacing` 读 `a/b/c`（立方系 `a=b=c`），`single_xrd.ts`
 `d ≥ λ/2` 预过滤等价于非正值兜底。web 无 Delphi 运行时异常机制，
 非正值输入由 UI 侧数值校验（`CrystalInput` 组件 `Number` 解析 + `>0`
 断言）前置拦截，与 legacy 行为在正常输入域等价。
+**遗留**：`Self+0x408..0x430` 6 个 double 的装载 call site 未从调用图
+定位（低价值，不影响已定案的 2θ/强度口径；与 §6 注 hkl 上界取整同理，
+归因标签更正为"调用图待定位"）。
 
 ### 8.8 开放项登记（2026-10-19 全部裁决完成）
 
