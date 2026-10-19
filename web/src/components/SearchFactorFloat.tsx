@@ -39,6 +39,19 @@ import {
 import { FF_LAMBDAS } from '@/lib/xrd/ff_data';
 import { Float } from './Float';
 
+/**
+ * Radiation list = the six FF.dat dispersion columns (Cu/Mo/Co × Kα₁/Kα₂),
+ * i.e. the tabulated wavelengths that actually have f′/f″ data.
+ *
+ * NOTE (2026-10-20): the legacy Search Factor dialog shared the main window's
+ * 6-item λ dropdown instead — CuKa1 1.54056 / CuKa 1.54178 / FeKa1 1.93604 /
+ * FeKa 1.93736 / MoKa1 0.71930 / MoKa 0.71073 — and FUN_0047907c mapped those
+ * ItemIndexes onto the very same six FF.dat columns by a hard-coded switch
+ * (case 0→CuKa1, 1→CuKa2, 2→CoKa1, 3→CoKa2, 4→MoKa1, 5→MoKa2). So the two
+ * lists cover identical data but differ in labels and in the λ printed:
+ * legacy shows weighted means and a mistyped Mo Kα1 (0.71930, defect #11),
+ * while we show the true column wavelengths. Only CuKa1 1.54056 coincides.
+ */
 const RADIATIONS = Object.entries(FF_LAMBDAS) as Array<[string, number]>;
 
 /** Upper bound on SVG points per curve (the 2θ grid can hold ~9701 rows). */
@@ -152,7 +165,11 @@ export function SearchFactorFloat({ open, onClose }: { open: boolean; onClose: (
           </label>
           <label>
             辐射靶
-            <select value={radiation} onChange={(e) => setRadiation(e.target.value)}>
+            <select
+              value={radiation}
+              onChange={(e) => setRadiation(e.target.value)}
+              title="按 FF.dat 的 6 个色散列展示（Cu/Mo/Co × Kα₁/Kα₂）。原程序下拉用的是主窗口 λ 列表（含 CuKa/FeKa/MoKa 加权项与笔误值 MoKa1 0.71930），经 ItemIndex 硬编码映射到同一批列，故数量相同而标签/波长不同。"
+            >
               {RADIATIONS.map(([label, lambda]) => (
                 <option key={label} value={label}>
                   {label} ({lambda})

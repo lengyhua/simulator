@@ -62,7 +62,8 @@
 | 5 | MoKa（加权） | 0.71073 | Mo Kα1（Δ0.0014） | pair3 = **Mo Kα2** |
 
 - MoKa1 笔误已登记 `DATA-REFERENCE.md` §4 #11；web `LAMBDA_TABLE.Mo` 采用正确值 0.70930（**有意偏离原程序**）。
-- web λ 表（Cu/Mo/Cr/Co/Fe 5 项）与原程序 6 项**结构不同**：原程序含 3 个加权平均项（CuKa/FeKa/MoKa）、无 Cr；web 有 Cr、无加权项。是否对齐见 `DATA-REFERENCE.md` §5.1 开放项。
+- web λ 表（Cu/Mo/Cr/Co/Fe 5 项）与原程序 6 项**结构不同**：原程序含 3 个加权平均项（CuKa/FeKa/MoKa）、无 Cr；web 有 Cr、无加权项。**2026-10-20 已补齐**：三个加权项以 `CUSTOM_LAMBDA_PRESETS` 形式加入（Cu Kα 加权 1.54178 / Fe Kα 加权 1.93736 / Mo Kα 加权 0.71073），legacy 6 项现已全部可选；Cr/Co/Ti/Al 作为 web-only 扩展保留（Co 虽不在 legacy λ 下拉，但 FF.dat 有列且被 FeKa1 错配读取，见上表）。是否「严格只保留 legacy 6 项」仍属 UI 产品决策，非物理差异。
+- **Search Factor 对话框辐射靶下拉**：原程序与主窗口**共用同一 6 项 λ 列表**（`dump_factor_dialog.py` 提取），web 则按 FF.dat 的 6 个色散列展示（CuKa1/CuKa2/MoKa1/MoKa2/CoKa1/CoKa2）。两者数量巧合相同、覆盖同一份数据（legacy 经 ItemIndex switch 映射到同一批列），但只有 `CuKa1 1.54056` 完全重合；legacy 的 FeKa1/FeKa 实读 Co Kα1/Co Kα2 列却标 Fe，MoKa1 标 0.71930（笔误）——web 按真实列名/列波长显示，属**有意纠正标签**而非数据差异。
 - **原程序 FeKa 色散行为已实证关闭**（Ghidra FUN_0047907c）：选 FeKa1/FeKa 时 F′F″ 复选框**不置灰**（FF.dat 存在即装载），实读 **Co Kα1/Co Kα2 列**——λ 用 Fe 值（1.93604/1.93736）而色散取 Co 值，构成 λ/色散来源错配（legacy latent bug，`DATA-REFERENCE.md` §4 #17）。以 Fe(Z=26) 为例：选 FeKa1 时程序用 f′=−2.052、f″=0.568（Co Kα1 列），而非任何 Fe Kα 物理值。
 - **列选择机制**：按 ComboBox ItemIndex 硬编码 switch（case 0→pair0、1→pair1、2→pair4、3→pair5、4→pair2、5→pair3），**不存在按 λ 最近匹配的查列逻辑**。由此关闭两项旧推测：①「选 FeKa 复选框置灰」——错误，是静默错配；②「MoKa1 笔误导致错配 Mo Kα2 列」——错误，MoKa1（ItemIndex 4）实读 Mo Kα1 列（pair2），笔误只影响几何（峰位 ≈+1.4%），不影响色散列。
 

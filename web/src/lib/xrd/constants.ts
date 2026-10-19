@@ -31,6 +31,23 @@ import type { XrdParams } from './types';
  * web 保留 0.70930（LAMBDA_TABLE.Mo）为物理正确默认值；legacy 保真复刻
  * 场景请显式选 CUSTOM_LAMBDA_PRESETS 的 "Mo Kα1 (legacy 笔误 0.71930)"
  * 条目。缺陷 #11 由「待决策」定案为「双值并存、legacy 保真用 0.71930」。
+ *
+ * 2026-10-20 与 legacy 6 项逐项对账（用户提问「为什么现在选项更多、值有出入」）：
+ *
+ * | legacy 下拉项      | λ        | 本表对应                              |
+ * |-------------------|----------|---------------------------------------|
+ * | CuKa1             | 1.54056  | `Cu` 1.54056（一致）                  |
+ * | CuKa（Kα 加权）    | 1.54178  | preset「Cu Kα 加权」1.54178          |
+ * | FeKa1             | 1.93604  | `Fe` 1.93604（一致；色散按 G5 读 Co 列）|
+ * | FeKa（Kα 加权）    | 1.93736  | preset「Fe Kα 加权」1.93736          |
+ * | MoKa1             | 0.71930  | preset「legacy 笔误 0.71930」（`Mo` 用物理值 0.70930）|
+ * | MoKa（Kα 加权）    | 0.71073  | preset「Mo Kα 加权」0.71073          |
+ *
+ * 即 legacy 6 项现已**全部可选**（5 项标准表 + 4 项 preset 覆盖其余）。
+ * 多出来的 `Cr` 2.28970、`Co` 1.78897 与 Ti/Al 属 **web-only 扩展**：
+ * legacy 下拉没有 Co（但 FF.dat 有 Co 列，Fe Kα1 正是错配读它，见 G5），
+ * 也没有 Cr（色散走 Henke 数据，见 `henke_dispersion.ts`）。
+ * 扩展项一律不删除——它们不影响 legacy 复现，只是下拉更长。
  */
 export const LAMBDA_TABLE: Readonly<Record<string, number>> = Object.freeze({
   Cu: 1.54056,
@@ -45,16 +62,30 @@ export const LAMBDA_TABLE: Readonly<Record<string, number>> = Object.freeze({
  * {@link LAMBDA_TABLE}). The legacy program's `lamda` field is editable, so a
  * numeric value outside the 5 standard targets is legal; these give the
  * common non-standard targets a proper label instead of "自定义".
+ *
+ * The three `legacy 加权` entries complete the legacy 6-item dropdown (see the
+ * {@link LAMBDA_TABLE} note): the shipped program listed the Kα₁ line and a
+ * Kα₁/Kα₂ intensity-weighted mean for each of Cu / Fe / Mo, so reproducing a
+ * legacy "CuKa" / "FeKa" / "MoKa" run needs those weighted values, not just
+ * the Kα₁ ones.
  */
 export const CUSTOM_LAMBDA_PRESETS: ReadonlyArray<{ label: string; value: number }> = Object.freeze([
   { label: 'Ti Kα', value: 2.8308 },
   { label: 'Al Kα', value: 7.0919 },
-  { label: 'Cu Kα₂ (K-beta)', value: 1.54433 },
+  // Cu Kα₂ = 1.54439 Å (FF.dat column + LBNL Henke table agree). NOT Kβ —
+  // Cu Kβ₁ is 1.39222 Å; an earlier entry mislabelled this line "K-beta"
+  // and carried a stray 1.54433 value, both corrected 2026-10-20.
+  { label: 'Cu Kα₂', value: 1.54439 },
   // Legacy fidelity: MoKa1 typo value (defect #11, §8.12). The shipped
   // program computed geometry with 0.71930 (not the physical 0.70930);
   // picking this reproduces the legacy MoKα1 ref-data tables (019/033/034/035)
   // to <0.1%.
   { label: 'Mo Kα1 (legacy 笔误 0.71930)', value: 0.7193 },
+  // Legacy weighted Kα means — the remaining three items of the legacy
+  // 6-item λ dropdown (Win32 CB_GETLBTEXT extraction, 2026-10-17).
+  { label: 'Cu Kα 加权 (legacy CuKa)', value: 1.54178 },
+  { label: 'Fe Kα 加权 (legacy FeKa)', value: 1.93736 },
+  { label: 'Mo Kα 加权 (legacy MoKa)', value: 0.71073 },
 ]);
 
 /** Default wavelength: Cu Kα (Å) — the Al.xrd reference was measured with it. */
