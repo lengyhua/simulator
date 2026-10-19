@@ -222,6 +222,15 @@ FUN_00479450: q = StrToFloat(EditQ)                      ; Self+0x354
 - 常量：2.0@0x479584、0.01@0x479588、2π@0x479594、10000.0@0x4795a0；shape[200]@Self+0x56350。
 - **净效果**：每个反射以峰高 |F|²、FWHM=2.355q 度的高斯落入 0.01°/bin 的网格；`1/(q√(2π))` 前因子与 max 归一化、÷10000 相互抵消——**代码级证实项目 #9**（峰高 = I_hkl，与 q 无关的归一化处理自洽）。
 - **无 /Imax**：`FDIV [Self+0x56350]` 除的是 shape[200]=10000.0（我初看误判为 Imax，实为表内峰顶常量）。
+- **q 加载无 clamp**（2026-10-19 补实，§2.13 同批次）：`0x47947e` 字节
+  `8B 86 54 03 00 00` = `mov ESI,[ESI+0x354]`（EditQ 控件指针），紧随
+  `CALL <rel32>`（`StrToFloat`，返回 double），`FLD [EBP−0x10]` 装载 q。
+  其后 FPU 指令流（`DD 25` FLD/`DB 2D` FLD/`DE C9` FADD/`D9 E0` FXCH）
+  为 399 点 shape 表展开，**无 `FCOMI ST(i),ST(0)` 上界/下界校验**
+  （全 128 B 窗口内 FPU 比较仅 `DE C9`/`D9 E0` 加法交换，无 `DB 7D`
+  类 FCOMI）。`q ≤ 0` 时 web 引擎自动降级 δ 棒（`gaussian.ts` 头注释
+  `q ≤ 0 → 输出 δ 棒谱`），与 legacy `PeakShape` 关 + 高斯 `σ=q` 行为
+  等价（§8.22 表：PeakShape 关 → δ 棒；web `usePeakShape ? q : 0`）。
 
 ### 2.8 Lp 因子（粉末 0x478c25–0x478cfe；single 0x47c97e–0x47ca77）【汇编·双路径 cos(2θ) 实锤】
 
