@@ -21,8 +21,8 @@
 .module-body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px 24px 24px;
+  gap: 12px;
+  padding: 12px 20px 20px;
   max-width: 1600px;
   width: 100%;
   margin: 0 auto;
@@ -32,14 +32,14 @@
 .module-panel-row {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 16px;
+  gap: 12px;
   align-items: start;
 }
 
 .module-column {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -53,7 +53,7 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 12px 14px;
   min-width: 0;
 }
 
@@ -68,19 +68,19 @@
   letter-spacing: 0.06em;
   color: var(--text-dim);
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .field-group {
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
-  padding: 12px;
+  padding: 8px 10px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.045), 0 1px 3px rgba(0,0,0,0.22);
 }
 
 .field-group + .field-group {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .field-group label,
@@ -105,7 +105,7 @@ select {
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 13px;
-  padding: 8px 12px;
+  padding: 5px 10px;
   border-radius: 6px;
   outline: none;
   cursor: pointer;
@@ -115,7 +115,7 @@ select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239BA3C2' d='M6 8L2 4h8L6 8z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
-  padding-right: 32px;
+  padding-right: 30px;
 }
 
 select:focus {
@@ -137,7 +137,7 @@ input[type="number"] {
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 13px;
-  padding: 8px 12px;
+  padding: 5px 10px;
   border-radius: 6px;
   outline: none;
   transition: border-color .15s, box-shadow .15s;
@@ -156,7 +156,7 @@ button, .btn {
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 600;
-  padding: 9px 14px;
+  padding: 6px 12px;
   border-radius: 6px;
   cursor: pointer;
   transition: border-color .15s, background .15s, box-shadow .15s;
@@ -166,7 +166,7 @@ button, .btn {
   text-align: center;
 }
 
-.btn { min-height: 36px; }
+.btn { min-height: 30px; }
 
 button:hover:not(:disabled), .btn:hover:not(:disabled) {
   border-color: var(--accent);
@@ -232,7 +232,7 @@ button:disabled, .btn:disabled, .btn-disabled {
 
 .data-table th,
 .data-table td {
-  padding: 6px 10px;
+  padding: 5px 10px;
   border-bottom: 1px solid var(--border-soft);
   text-align: right;
   white-space: nowrap;
@@ -278,7 +278,18 @@ button:disabled, .btn:disabled, .btn-disabled {
 .sample-picker {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+
+/* 预置样品 + 上传 .cord 同一行两列（2026-10-19 用户反馈：纵向堆叠太高） */
+.sample-picker-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+.sample-picker-fields .field-group + .field-group {
+  margin-top: 0;
 }
 
 .file-input {
@@ -289,7 +300,7 @@ button:disabled, .btn:disabled, .btn-disabled {
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 13px;
-  padding: 7px 12px;
+  padding: 5px 10px;
   border-radius: 6px;
   outline: none;
   cursor: pointer;
@@ -303,8 +314,8 @@ button:disabled, .btn:disabled, .btn-disabled {
   font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 600;
-  padding: 5px 10px;
-  margin-right: 10px;
+  padding: 4px 8px;
+  margin-right: 8px;
   cursor: pointer;
 }
 
@@ -325,7 +336,7 @@ button:disabled, .btn:disabled, .btn-disabled {
 .crystal-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px 12px;
+  gap: 8px 10px;
 }
 
 .crystal-grid label {
@@ -346,9 +357,14 @@ button:disabled, .btn:disabled, .btn-disabled {
   margin: 0;
 }
 
+.unit-cell-caption {
+  font-size: 12px;
+  margin: 0;
+}
+
 .crystal-edit-hint {
   font-size: 12px;
-  margin: 10px 0 0;
+  margin: 8px 0 0;
 }
 
 /* ─── T09 atom table ───────────────────────────────────────────── */
@@ -365,7 +381,7 @@ button:disabled, .btn:disabled, .btn-disabled {
 
 .atom-table-scroll {
   overflow-x: auto;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .atom-table th,
@@ -388,7 +404,7 @@ button:disabled, .btn:disabled, .btn-disabled {
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 12px;
-  padding: 5px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
   outline: none;
   transition: border-color .15s, box-shadow .15s;
@@ -407,7 +423,7 @@ button:disabled, .btn:disabled, .btn-disabled {
 .btn-danger-cell {
   padding: 5px 10px;
   font-size: 12px;
-  min-height: 28px;
+  min-height: 26px;
   color: var(--danger);
   border-color: rgba(248,113,113,0.4);
 }
@@ -437,13 +453,13 @@ button:disabled, .btn:disabled, .btn-disabled {
   letter-spacing: 0.06em;
   color: var(--text-dim);
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .checkbox-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
+  gap: 6px 10px;
 }
 
 .checkbox-label {
@@ -478,14 +494,14 @@ button:disabled, .btn:disabled, .btn-disabled {
 
 .thermal-hint {
   font-size: 12px;
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   max-width: 520px;
   line-height: 1.5;
 }
 
 .settings-hint {
   font-size: 12px;
-  margin: 10px 0 0;
+  margin: 8px 0 0;
 }
 
 /* ─── T11 result curve ─────────────────────────────────────────── */
@@ -495,7 +511,7 @@ button:disabled, .btn:disabled, .btn-disabled {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .chart-head .section-label {

@@ -4,14 +4,6 @@ import { HOME_HREF } from '@/config';
 
 import { PlatformTab } from './PlatformTab';
 
-interface PlatformHeaderProps {
-  /**
-   * Optional instruction pill rendered in the header's top-right corner
-   * (upstream `#top-instructions`). Omitted when no instruction is active.
-   */
-  instruction?: string;
-}
-
 /**
  * Platform shell header — verbatim replica of XRD_simulator.html lines 20–38
  * (simulator/static/simulator/xrd_simulator/XRD_simulator.html):
@@ -25,7 +17,7 @@ interface PlatformHeaderProps {
  * identical (plan §1.5). The branch reads `import.meta.env.DEV` inline so the
  * unused element type is tree-shaken from production builds.
  */
-export function PlatformHeader({ instruction }: PlatformHeaderProps) {
+export function PlatformHeader() {
   const titleLink = import.meta.env.DEV ? (
     <Link className="platform-name" to={HOME_HREF} title="返回主页">
       XRD模拟仿真辅助分析平台
@@ -48,11 +40,6 @@ export function PlatformHeader({ instruction }: PlatformHeaderProps) {
         <nav className="tab-bar">
           <PlatformTab label="XRD理论数据仿真" active />
         </nav>
-        {instruction ? (
-          <div id="top-instructions" className="top-instructions-on">
-            <p id="top-instructions-txt">{instruction}</p>
-          </div>
-        ) : null}
       </header>
     </>
   );

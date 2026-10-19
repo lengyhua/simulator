@@ -45,7 +45,7 @@ html, body {
   display: flex;
   flex-direction: column;
   user-select: none;
-  position: relative; /* positioning context for instruction pills */
+  position: relative; /* 上游保留的定位上下文（原 instruction pill 已删，属性保留以防回归） */
 }
 
 .platform-title-row {
@@ -154,6 +154,19 @@ body:has(#module-main) .platform-header {
   flex: 0 0 auto;
 }
 
+/* React 挂载点 #root 必须参与 flex 链：DOM 为 body → #root → main#module-main，
+   若 #root 为普通块级 div，它会成为唯一 flex item 撑满内容高度，
+   #module-main 的 flex:1 1 auto; min-height:0; overflow:auto 全部落空，
+   内容超高时被 body overflow:hidden 裁切且任何位置都无法滚动（2026-10-19 实测复现）。
+   此处把 #root 也设为 column flex 并 min-height:0，使 #module-main 成为
+   受限高度的滚动容器。 */
+body:has(#module-main) #root {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 /* ─── Top bar (kept for structural fidelity) ────────────────────── */
 #top-bar {
   display: none; /* replaced by platform shell */
@@ -169,6 +182,9 @@ select,
 }
 
 /* ─── 修正 2: 模块主区域 —— header 固定, 内容区自行滚动 ─────────── */
+/* 滚动条拇指用亮色 (#6B7390)：深色底上 var(--border) 细条几乎不可见；
+   更关键的根因是 #root 未接入 flex 链(见上)，修复后 #module-main
+   才能真正成为 overflow:auto 的滚动容器（2026-10-19）。 */
 #module-main {
   flex: 1 1 auto;
   min-height: 0;
@@ -176,7 +192,7 @@ select,
   background: var(--surface);
   overflow: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: #6B7390 transparent;
 }
 
 /* ─── Focus visible (模块页表单控件) ────────────────────────────── */

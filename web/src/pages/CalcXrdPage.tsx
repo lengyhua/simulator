@@ -33,7 +33,7 @@ export default function CalcXrdPage() {
 
   return (
     <>
-      <PlatformHeader instruction="请从下拉菜单中选择样品，或上传 .cord 文件" />
+      <PlatformHeader />
       <main id="module-main">
         <div className="module-body">
           {error ? (

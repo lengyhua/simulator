@@ -169,8 +169,8 @@ export function CrystalInput() {
     <section className="module-panel">
       <p className="section-label">晶体参数</p>
       <div className="crystal-grid">
-        <div className="crystal-grid-full">
-          <label htmlFor="crystal-name">Name（晶体名称）</label>
+        <div>
+          <label htmlFor="crystal-name">Name（名称）</label>
           <input
             id="crystal-name"
             type="text"
@@ -193,7 +193,9 @@ export function CrystalInput() {
           </select>
         </div>
         <div>
-          <label htmlFor="crystal-spacegroup">SpaceGroup（空间群，随 System 联动）</label>
+          <label htmlFor="crystal-spacegroup" title="空间群选项随 System 联动">
+            SpaceGroup（空间群）
+          </label>
           <select
             id="crystal-spacegroup"
             value={effectiveSgKey}

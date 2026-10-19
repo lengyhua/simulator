@@ -56,29 +56,31 @@ export function SamplePicker() {
 
   return (
     <div className="sample-picker">
-      <div className="field-group">
-        <label htmlFor="sample-select">预置样品</label>
-        <select id="sample-select" defaultValue="" onChange={handleSampleChange}>
-          <option value="" disabled>
-            选择样品后自动加载…
-          </option>
-          {SAMPLE_CRYSTALS.map((sample) => (
-            <option key={sample.id} value={sample.id}>
-              {sample.label}
+      <div className="sample-picker-fields">
+        <div className="field-group">
+          <label htmlFor="sample-select">预置样品</label>
+          <select id="sample-select" defaultValue="" onChange={handleSampleChange}>
+            <option value="" disabled>
+              选择样品后自动加载…
             </option>
-          ))}
-        </select>
-      </div>
-      <div className="field-group">
-        <label htmlFor="cord-upload">上传 .cord 文件</label>
-        <input
-          id="cord-upload"
-          ref={fileInputRef}
-          type="file"
-          accept=".cord,text/plain"
-          onChange={handleFileChange}
-          className="file-input"
-        />
+            {SAMPLE_CRYSTALS.map((sample) => (
+              <option key={sample.id} value={sample.id}>
+                {sample.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field-group">
+          <label htmlFor="cord-upload">上传 .cord 文件</label>
+          <input
+            id="cord-upload"
+            ref={fileInputRef}
+            type="file"
+            accept=".cord,text/plain"
+            onChange={handleFileChange}
+            className="file-input"
+          />
+        </div>
       </div>
       <p className="sample-status text-dim">
         {crystalName ? (
