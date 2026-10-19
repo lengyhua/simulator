@@ -68,7 +68,7 @@ $$Lp = \frac{1+\cos^2 2\theta}{2\sin^2\theta\,\cos\theta}$$
 - 峰形：`f(x)=\exp\bigl(-(x-u)^2/2q^2\bigr)`（**峰顶 = I_hkl 的归一化形式**，
   无 `1/(q√2π)` 密度因子）；FWHM = 2.355σ ≈ 0.2355°。
   help RTF 公式 (6) 的文字含 `1/(q√2π)`，但**程序实现不采用**——实证见
-  `ref-temp/Al.xrd`（原程序 2026-10-16 新存，与 `samples/Al.xrd` 逐字节一致）
+  `samples/Al.xrd`（原程序 2026-10-16 保存，与 ref-temp/Al.xrd 逐字节一致；ref-temp/ 已于 2026-10-19 删除）
   峰值 152557 = I_hkl 本身；若含该因子峰顶应为 ≈608614（3.9894 倍）。
   原程序曲线图同口径（GUI 实测 38.63° 处 152557）。
 - 展宽窗口：`GAUSSIAN_WINDOW_Q = 8`（`gaussian.ts`），即 ±8σ 邻域内非零。

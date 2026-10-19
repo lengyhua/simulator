@@ -35,7 +35,7 @@ $$f_0(s)=\sum_{i=1}^{5} a_i\,e^{-b_i s^2}+c,\qquad s=\tfrac{\sin\theta}{\lambda}
 - `Max Fo = 0.999978 = Σa+c`（§1 自检的可视化）；F1 = F2 = 0 与 FF.dat 中 H 行列全 0 一致；
 - `Factor.dat` 字节序经直接读取复核：记录内 11 个 double 确为**交错** a₁ b₁ a₂ b₂ …（H 原始序列 [0.413048, 15.569946, 0.294953, 32.398468, …] 可证），本文 §1 布局描述无误；`gen_factor_dat.py --check` 199 条 round-trip 全过、`cross_validate_f0.py` 对 gemmi it92 全过。
 
-GUI 只读检查工具（截屏与裁片一律写 `scripts/tmp/peek/`，git 已忽略；**勿写 `ref-temp/`**）：
+GUI 只读检查工具（截屏与裁片一律写 `scripts/tmp/peek/`，git 已忽略；ref-temp/ 目录已于 2026-10-19 删除，勿再创建）：
 
 | 脚本 | 作用 |
 |---|---|
