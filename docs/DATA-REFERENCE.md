@@ -1,11 +1,15 @@
 # CalcXRD 参数与数据 · 主文档
 
-> **本文件是参数/数据文档的唯一入口。** 每个参数/数据集在这里有一行，  
-> 指向「在哪用 / 权威来源 / 维护代码 / 维护建议」。细节（推导、验证、  
+> **本文件是参数/数据文档的唯一入口。** 每个参数/数据集在这里有一行，
+> 指向「在哪用 / 权威来源 / 维护代码 / 维护建议」。细节（推导、验证、
 > 二进制结构）不搬进来，按链接进主题文档，避免重复。
 >
-> 状态：2026-10-16 全面整理；旧散文档已加 DEPRECATED 头（见  
-> `DATA-REORGANIZATION.md` 处置清单），**本表 + 主题文档为权威**。
+> 📌 **先读 [`SETTLED.md`](SETTLED.md)** —— 那是全部已定案结论（含依据）的总表；
+> 本文件只回答「数据在哪、怎么维护」。
+>
+> 状态：2026-10-16 全面整理；2026-10-20 清理（4 份 DEPRECATED 文档删除、
+> 过程记录归档），旧文档去向见 [`archive/README.md`](archive/README.md)。
+> **本表 + 主题文档 + SETTLED.md 为权威。**
 
 ---
 
@@ -46,13 +50,15 @@
 
 | 主题        | 文档                                                   | 内容                                                                     |
 | --------- | ---------------------------------------------------- | ---------------------------------------------------------------------- |
+| **定案总表**   | **[`SETTLED.md`](SETTLED.md)**                        | **全部已定案结论 + 依据 + 代码位置 + 缺陷保真清单 + 验收基准**                                  |
 | 公式（LaTeX） | [`formulas.md`](formulas.md)                         | f₀ 近似、温度因子、结构因子、色散、Lp、强度/峰形                                            |
 | f₀        | [`params-f0.md`](params-f0.md)                       | Factor.dat 结构、离子 f₀ 来源、cronie 对照、验证命令                                  |
 | F′/F″     | [`params-dispersion.md`](params-dispersion.md)       | FF.dat 二进制、离子近似、Cr/Fe Henke、mode 语义                                    |
 | 几何/峰形     | [`params-geometry-peak.md`](params-geometry-peak.md) | Wyckoff 消光、B、λ、Lp、高斯 q                                                 |
 | 来源谱系      | [`data-provenance.md`](data-provenance.md)           | IUCr→中间源→引擎 链路、交叉验证地图、6.1.1.3 提取记录                                     |
-| 审计/验证     | [`audits/`](audits/)                                 | `physics-audit` / `ff-dat-validation` / `intensity-uncertainty-review` |
-| 旧文档处置     | [`DATA-REORGANIZATION.md`](DATA-REORGANIZATION.md)   | 重组映射 + CLAUDE.md 待勘误项                                                  |
+| 字节级证据索引   | [`ghidra-reverse-findings.md`](ghidra-reverse-findings.md) | 汇编 VA / 常量地址 / 数值取证速查                                              |
+| 审计/验证     | [`audits/`](audits/)                                 | `physics-audit` / `ff-dat-validation` / `intensity-uncertainty-review`（2026-10-16 历史评审） |
+| 归档（过程记录）  | [`archive/`](archive/)                               | 取证过程、整理记录；已删除文档去向见 `archive/README.md`                                  |
 
 ---
 

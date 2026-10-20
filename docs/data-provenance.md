@@ -1,7 +1,8 @@
 # 数据来源谱系与交叉验证地图
 
 > 入口：[`DATA-REFERENCE.md`](DATA-REFERENCE.md) §2。本文 = 来源、验证、提取记录。
-> 旧 `references/README.md` 与 `docs/ion-and-cr-fe-data-research.md` §4/§5 的数据内容已并入本文（那两处已 DEPRECATED）。
+> 旧 `references/README.md` 与 `ion-and-cr-fe-data-research.md` §4/§5 的数据内容已并入本文
+> （那两处已删除；旧文档去向见 [`archive/README.md`](archive/README.md)）。
 
 ---
 
@@ -47,7 +48,7 @@ IUCr / ITC Vol C (权威标准, 1992+ & 2006 4th ed.)
 | LBNL CXRO / Henke（`henke.lbl.gov`） | 已抓取 92 元素 `.nff` 至 `scripts/tmp/`（2026-10-16） |
 | Sasaki 表（KEK）/ NIST FFAST / BraggLibrary | 网络不可达，仅记录来源 |
 
-## 4. ITC-C Table 6.1.1.3 提取记录（并入自旧 `itc-c-table6113-extraction.md`）
+## 4. ITC-C Table 6.1.1.3 提取记录（2026-10-16 并入本文，原提取文档已删除）
 
 - **价值**：补上「离子 f₀ 权威来源」缺口（113 化学相关离子 × 66 s 采样）。
 - **PDF 文本层不可逐值**：列粘连（`6.9248.3748.751`）+ 页底 s 行交错 → 首版 49 处单调性违例（抽取伪影，非物理）。
@@ -57,7 +58,7 @@ IUCr / ITC Vol C (权威标准, 1992+ & 2006 4th ed.)
 - **已知残差**：Sc³⁺/Ti⁴⁺ 负 c 系数在 s>1.90 尾区非单调（4-Gaussian+c 固有边界，数值本身精确），已写 `tail_note`。
 - **产出**：`docs/itc-c-table6113.json`（113 物种，含系数 + 66 s 采样 + 电子数）。
 
-## 5. 多源实证记录（并入自旧 `ion-and-cr-fe-data-research.md` §5）
+## 5. 多源实证记录（2026-10-16 并入本文，原调研文档已删除）
 
 - **FF.dat f″ vs Henke f₂ 全量 552 组**：Co 列 FF.dat 系统性偏高 10–25% → 两套独立理论值，**FF.dat 为保真基准、Henke 为独立交叉参考**，不替换。
 - **关键元素三源（FF.dat / Henke / IUCr CIF）**：
@@ -81,4 +82,5 @@ IUCr / ITC Vol C (权威标准, 1992+ & 2006 4th ed.)
 | 公式（LaTeX） | `formulas.md` |
 | 来源谱系 / 交叉验证 / 提取记录 | 本文 |
 | Ce 缺陷 / 物理审计 / 强度不确定性 | `audits/ff-dat-validation.md` / `audits/physics-audit.md` / `audits/intensity-uncertainty-review.md` |
-| 旧文档去哪了 / CLAUDE.md 待勘误 | `DATA-REORGANIZATION.md` |
+| **全部已定案结论（按主题）** | **[`SETTLED.md`](SETTLED.md)** |
+| 旧文档去哪了 / 归档说明 | [`archive/README.md`](archive/README.md) |
