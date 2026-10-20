@@ -23,7 +23,9 @@ Thumbs.db
 
 # Go server build artifacts (reproducible — do not commit)
 # CalcXRD.exe: 由 `cd server && bash build.sh` 重新生成（go build + go-bindata）
-# static/calc-xrd-dist/: web/ 构建产物的拷贝（npm run build → 同步），由 build.sh 重新生成
+# static/calc-xrd-dist/: Junction → web/dist（build.sh 自动建/重建，非真实拷贝；
+#   打包时 go-bindata 跟 Junction 走进 web/dist 生成 bindata，embed key 前缀
+#   固定为 "static/calc-xrd-dist/"）
 server/CalcXRD.exe
 server/static/calc-xrd-dist/
 # server/.omc/: OMC agent 会话状态（go-bindata 白名单 regen.sh/build.sh 会在打包前兜底检查，

@@ -2,7 +2,8 @@
 # build.sh — 打包 CalcXRD 单 exe
 #
 # 一条命令完成：
-#   1. 白名单重新生成 htmlbind/static.go（只打包三个模块目录，避免杂目录混入）
+#   0. 检查 web/dist 是否落后于 web/src，落后则自动 npm run build
+#   1. 白名单重新生成 htmlbind/static.go（直接 embed ../web/dist，无中间副本）
 #   2. go build 出 CalcXRD.exe
 #   3. go test 验证路由/embed 正确性
 #   4. 打印最终 exe 大小 + 确认无 OMC 垃圾
@@ -10,6 +11,11 @@
 # 用法：
 #   bash build.sh            # 在仓库内生成 CalcXRD.exe
 #   bash build.sh -o dist/   # 输出到指定路径（相对 server/）
+#
+# 前置条件：web/dist/ 必须存在（由本脚本第 0 步保证）。
+# embed 的 web 侧产物 key 前缀固定为 "web-dist/"（即 htmlbind 里的
+# "web-dist/index.html"、"web-dist/assets/xxx.js" 等），simulator.go 的
+# /calc-xrd/ 路由直接查这个前缀，不再依赖任何中间拷贝目录。
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -32,7 +38,51 @@ if [[ ! -x "$GO_BINDATA" ]]; then
   exit 1
 fi
 
-# ── 1. 白名单重新生成 bindata ────────────────────────────────────────────────
+# ── 0. web 侧检查：确保 web/dist 不落后于 web/src ─────────────────────────────
+# 打包直接 embed ../web/dist（go-bindata 支持从 module 根之外读取文件，
+# 只要在 build 时路径可达即可）。web/dist 是 Vite 构建产物，若 web/src 比它
+# 更新，说明 UI 有未构建的改动——自动 npm run build，避免打出带旧 UI 的 exe。
+WEB_ROOT="$(cd "$(dirname "$0")/../web" && pwd)"
+WEB_DIST="$WEB_ROOT/dist"
+# Windows 绝对路径版（cmd //c 下 mklink 用）
+WEB_DIST_WIN="$(cygpath -w "$WEB_DIST")"
+if [[ -f "$WEB_ROOT/src/routes.tsx" ]]; then
+  newest_src=$(find "$WEB_ROOT/src" "$WEB_ROOT/vite.config.ts" -type f 2>/dev/null \
+    | xargs -r ls -t 2>/dev/null | head -1)
+  dist_html="$WEB_DIST/index.html"
+  if [[ -n "$newest_src" && ! -f "$dist_html" ]]; then
+    echo "==> web/dist 缺失，先执行 npm run build ..."
+    (cd "$WEB_ROOT" && npm run build)
+  elif [[ -n "$newest_src" ]]; then
+    src_newer=$(find "$WEB_ROOT/src" -type f -newer "$dist_html" 2>/dev/null | head -1)
+    if [[ -n "$src_newer" ]]; then
+      echo "==> 检测到 web/src 比 dist 新（$src_newer），执行 npm run build ..."
+      (cd "$WEB_ROOT" && npm run build)
+    else
+      echo "==> web/dist 已是最新，跳过 npm build"
+    fi
+  fi
+  # 确保 embed 源是 Junction → ../web/dist（无中间拷贝：npm run build 后
+  # 重新跑本脚本即可自动嵌最新产物）。Junction 无需管理员权限（cmd mklink /J）。
+  JUNC="static/calc-xrd-dist"
+  if [[ ! -L "$JUNC" && ! -d "$JUNC" ]]; then
+    cmd //c "mklink /J static\\calc-xrd-dist $WEB_DIST_WIN" >/dev/null 2>&1 \
+      || { echo "错误：创建 Junction 失败" >&2; exit 1; }
+  elif [[ ! -e "$JUNC/index.html" ]]; then
+    # 目录在但指向失效（web/dist 被删）——重建
+    rm -rf "$JUNC" 2>/dev/null || true
+    cmd //c "mklink /J static\\calc-xrd-dist $WEB_DIST_WIN" >/dev/null 2>&1 \
+      || { echo "错误：重建 Junction 失败" >&2; exit 1; }
+  fi
+  # embed 源必须是完整产物（至少含 index.html），否则 bindata 会缺文件
+  if [[ ! -e "$JUNC/index.html" ]]; then
+    echo "错误：$JUNC/index.html 不可达（Junction 失效或 npm run build 未成功）" >&2
+    exit 1
+  fi
+  echo "==> 就绪：embed 源 = $JUNC（Junction → $WEB_DIST，$(find -L "$JUNC" -type f | wc -l) 个文件）"
+fi
+
+# ── 1. 白名单重新生成 bindata（走 Junction → web/dist，无中间拷贝目录）──────
 echo "==> 重新生成 htmlbind/static.go（白名单）..."
 "$GO_BINDATA" -pkg htmlbind -o htmlbind/static.go \
   ./static/calc-xrd-dist/... \

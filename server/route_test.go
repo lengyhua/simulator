@@ -18,7 +18,10 @@ import (
 )
 
 // mirrorAssetKey 复刻 simulator.go 里 /calc-xrd/ handler + readPath 的
-// key 构造逻辑（含 readPath 去掉前导 "."/"/" 的行为）。
+// key 构造逻辑（含 readPath 去掉前导 "."/"/" 的行为）。embed key 前缀
+// 固定为 "static/calc-xrd-dist/"——build.sh 生成 bindata 时白名单走
+// ./static/calc-xrd-dist/...，该目录是 Junction 指向 ../web/dist
+// （Vite 构建产物，无中间拷贝目录）。
 // 注意："/calc-xrd"（无斜杠）永远到不了 handler——Go ServeMux 会先
 // 301 到 "/calc-xrd/"，所以只需处理带斜杠的形式。
 func mirrorAssetKey(path string) string {

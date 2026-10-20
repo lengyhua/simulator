@@ -44,11 +44,17 @@ func main() {
 		// 精确匹配 "/calc-xrd/" 本身时 ServeMux 直接进本 handler；
 		// 而 "/calc-xrd"（无斜杠）会被 ServeMux 自动 301 → "/calc-xrd/"，
 		// 所以这里只需处理前缀匹配（含斜杠本身）一种情况。
+		//
+		// embed key 前缀固定为 "static/calc-xrd-dist/"——build.sh 生成 bindata
+		// 时走 ./static/calc-xrd-dist/... 白名单；该目录是 Junction，实指
+		// ../web/dist（Vite 构建产物，无中间拷贝目录；见 build.sh 注释与
+		// .gitignore）。npm run build 后 Junction 自动指向最新产物，重新跑
+		// build.sh 即嵌进二进制。
 		if path == "/calc-xrd/" {
 			readPath(w, r, "static/calc-xrd-dist/index.html")
 			return
 		}
-		// /calc-xrd/assets/... → 去掉前缀，从 calc-xrd-dist 读取
+		// /calc-xrd/assets/... → 去掉前缀，从 calc-xrd-dist（Junction → web/dist）读取
 		assetPath := "static/calc-xrd-dist/" + strings.TrimPrefix(path, "/calc-xrd/")
 		readPath(w, r, assetPath)
 	})
