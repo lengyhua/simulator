@@ -30,10 +30,11 @@ const prodRoutes = (
  */
 export function AppRoutes() {
   if (import.meta.env.DEV) {
-    const HomePage = lazy(() => import('@/pages/HomePage'));
+    // TEMP (diagnostic 2026-10-19): `/` temporarily serves the module page
+    // instead of the broken lazy HomePage chunk; revert once HomePage is fixed.
     return (
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<CalcXrdPage />} />
         <Route path={MODULE_PATH} element={<CalcXrdPage />} />
       </Routes>
     );
