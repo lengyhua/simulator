@@ -91,10 +91,12 @@ describe('powder_report — 按 d 分组的报表行（NaCl.RTF 定案）', () =
     expect(Math.round(three.intensity)).toBe(2331);
     expect(Math.round(five.intensity)).toBe(6994);
     expect(Math.round(three.intensity + five.intensity)).toBe(9325);
-    // Representative cell text lists one hkl per family.
-    expect(reportHklCell(last!)).toBe('(3 3 3) (5 1 1)');
-    // The tooltip carries both families' representatives.
-    expect(reportHklFull(last!)).toBe('(3 3 3) (5 1 1)');
+    // Representative list: one hkl per family.
+    expect(last?.hklList.join(' ')).toBe('(3 3 3) (5 1 1)');
+    // The tooltip re-spells all 32 members readably, one space apart.
+    expect(reportHklFull(last!).match(/\)/g)).toHaveLength(32);
+    expect(reportHklFull(last!).startsWith('(-1 -1 -5)')).toBe(true);
+    expect(reportHklFull(last!).endsWith('(511)')).toBe(true);
   });
 
   it('hkl 成员集合与 legacy RTF 列表一致（顺序无关）', () => {
@@ -109,6 +111,37 @@ describe('powder_report — 按 d 分组的报表行（NaCl.RTF 定案）', () =
     // The degenerate 90.83° row merges both families into one set.
     const last = rows.find((r) => r.twoTheta.toFixed(2) === '90.83');
     expect(last?.hklList.sort()).toEqual(['(3 3 3)', '(5 1 1)']);
+  });
+
+  it('hkl 列写出全部成员，且与 NaCl.RTF 末行 32 个逐值一致', () => {
+    // The legacy RTF spells members without inner spaces: (333)(-3-33)(5-11)…
+    const legacyMembers = [
+      '(-1-1-5)', '(-1-15)', '(-1-5-1)', '(-1-51)', '(-11-5)', '(-115)',
+      '(-15-1)', '(-151)', '(-3-3-3)', '(-3-33)', '(-33-3)', '(-333)',
+      '(-5-1-1)', '(-5-11)', '(-51-1)', '(-511)', '(1-1-5)', '(1-15)',
+      '(1-5-1)', '(1-51)', '(11-5)', '(115)', '(15-1)', '(151)',
+      '(3-3-3)', '(3-33)', '(33-3)', '(333)', '(5-1-1)', '(5-11)',
+      '(51-1)', '(511)',
+    ];
+    const pattern = computeXRDPattern(parseCord(sampleText('nacl')), alParams);
+    const rows = groupReflectionsByAngle(pattern.reflections);
+    const last = rows.find((r) => r.twoTheta.toFixed(2) === '90.83');
+    // Same members, spelled the legacy way (no spaces), as one concatenated
+    // cell — exactly what the RTF column holds.
+    expect([...last!.hklMembers].sort()).toEqual([...legacyMembers].sort());
+    expect(last!.hklMembers).toHaveLength(32);
+    // Lexicographic order reproduces the legacy cell character for character
+    // on this row (NaCl.RTF line 10 is itself fully sorted).
+    expect(reportHklCell(last!)).toBe(legacyMembers.join(''));
+    // The {111} row likewise carries its 8 members.
+    const first = rows.find((r) => r.twoTheta.toFixed(2) === '27.47');
+    expect([...first!.hklMembers].sort()).toEqual(
+      [
+        '(-1-1-1)', '(-1-11)', '(-11-1)', '(-111)',
+        '(1-1-1)', '(1-11)', '(11-1)', '(111)',
+      ].sort(),
+    );
+    expect(first!.hklMembers).toHaveLength(8);
   });
 
   it('BaTiO3（Pm-3m primitive）同样存在同 d 多族，分组后行数少于反射数', () => {

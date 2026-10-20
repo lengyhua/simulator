@@ -26,7 +26,7 @@ import type { HKLReflection } from './types';
 
 /** One crystallographic family sharing the row's angle. */
 export interface PowderReportFamily {
-  /** Representative hkl of the family (the first one enumerated). */
+  /** Representative hkl of the family (the canonical orbit member). */
   h: number;
   k: number;
   l: number;
@@ -34,6 +34,11 @@ export interface PowderReportFamily {
   multiplicity: number;
   /** Intensity of the whole family (already Σ over its members). */
   intensity: number;
+  /**
+   * Every symmetry-equivalent member of the family, in engine enumeration
+   * order. Present when the engine exposed them (`HKLReflection.images`).
+   */
+  members: string[];
 }
 
 /** A grouped List-table row — what the legacy RTF report prints per line. */
@@ -44,6 +49,12 @@ export interface PowderReportRow {
   families: PowderReportFamily[];
   /** Representative hkl of every family, in enumeration order. */
   hklList: string[];
+  /**
+   * Every member hkl of every family, in lexicographic order — the content
+   * of the legacy RTF hkl column (NaCl's 90.83° row carries 32 of them).
+   * Falls back to {@link hklList} when the engine did not expose the orbits.
+   */
+  hklMembers: string[];
   /** Sum of the family intensities — the legacy row's `I`. */
   intensity: number;
   /** Relative intensity, strongest row = 1000 (legacy List convention). */
@@ -52,8 +63,17 @@ export interface PowderReportRow {
   multiplicity: number;
 }
 
+/**
+ * Formats hkl the way the legacy report writes it: `(333)`, no inner spaces.
+ * (web's other tables use `(3 3 3)`; the powder List column follows the
+ * original program's RTF spelling so the two can be diffed directly.)
+ */
+function legacyHkl(h: number, k: number, l: number): string {
+  return `(${h}${k}${l})`;
+}
+
 /** Formats hkl as `(h k l)`, the web table's display form. */
-function hklLabel(h: number, k: number, l: number): string {
+function spacedHkl(h: number, k: number, l: number): string {
   return `(${h} ${k} ${l})`;
 }
 
@@ -95,6 +115,7 @@ export function groupReflectionsByAngle(reflections: readonly HKLReflection[]): 
         d: reflection.d,
         families: [],
         hklList: [],
+        hklMembers: [],
         intensity: 0,
         intensityIo: 0,
         multiplicity: 0,
@@ -112,18 +133,33 @@ export function groupReflectionsByAngle(reflections: readonly HKLReflection[]): 
         l: reflection.l,
         multiplicity: 0,
         intensity: 0,
+        members: [],
       };
       familyByKey.set(key, family);
       row.families.push(family);
-      row.hklList.push(hklLabel(reflection.h, reflection.k, reflection.l));
+      row.hklList.push(spacedHkl(reflection.h, reflection.k, reflection.l));
     }
     // A reflection carries the WHOLE family: its `multiplicity` is the member
     // count and its `intensity` already includes it.
     family.multiplicity += reflection.multiplicity;
     family.intensity += reflection.intensity;
+    family.members = (reflection.images ?? []).map((image) =>
+      legacyHkl(image[0], image[1], image[2]),
+    );
 
     row.intensity += reflection.intensity;
     row.multiplicity += reflection.multiplicity;
+    row.hklMembers.push(...family.members);
+  }
+
+  // The legacy report prints members in a fixed, reproducible order — the
+  // shipped program's own enumeration order is not (line 1 of NaCl.RTF lists
+  // {111} as (111)(-1-1-1)(1-11)…, line 10 lists {511} fully sorted). Since
+  // the SET is what carries the physics, we print lexicographic order: it is
+  // deterministic, readable, and matches the legacy spelling on the rows a
+  // user is most likely to diff (the degenerate ones).
+  for (const row of rows) {
+    row.hklMembers.sort();
   }
 
   // I/Io is defined on the ROWS (the merged value is what legacy prints), so
@@ -137,12 +173,24 @@ export function groupReflectionsByAngle(reflections: readonly HKLReflection[]): 
   return rows;
 }
 
-/** Compact hkl cell text: one representative per family, e.g. `(3 3 3) (5 1 1)`. */
+/**
+ * The hkl column: every member of every family, spelled the legacy way
+ * (`(333)(-333)…`). Falls back to the representatives when the engine did
+ * not expose the orbits, so the cell is never empty.
+ */
 export function reportHklCell(row: PowderReportRow): string {
-  return row.families.map((family) => hklLabel(family.h, family.k, family.l)).join(' ');
+  return row.hklMembers.length > 0 ? row.hklMembers.join('') : row.hklList.join(' ');
 }
 
-/** Full member list for a row's tooltip, e.g. `(3 3 3) (5 1 1)`. */
+/**
+ * Readable variant for the tooltip: `(-3 -3 3) (5 1 1) …`, one space apart.
+ * Re-spells the legacy `(-3-33)` form by re-splitting its signed integers.
+ */
 export function reportHklFull(row: PowderReportRow): string {
-  return row.hklList.join(' ');
+  if (row.hklMembers.length === 0) {
+    return row.hklList.join(' ');
+  }
+  return row.hklMembers
+    .map((member) => `(${(member.match(/-?\d+/g) ?? []).join(' ')})`)
+    .join(' ');
 }

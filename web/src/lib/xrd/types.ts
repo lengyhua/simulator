@@ -63,6 +63,14 @@ export interface HKLReflection {
   twoTheta: number;
   /** Laue-equivalent plane count (Friedel pairs included). */
   multiplicity: number;
+  /**
+   * Every symmetry-equivalent (h,k,l) of this reflection's orbit, in the
+   * engine's enumeration order (powder pipeline only). The legacy powder
+   * List/RTF report prints all of them in the hkl column — e.g. NaCl's
+   * 90.83° row lists 32 members across `{333}` and `{511}` — so the report
+   * layer needs the list, not just the canonical representative.
+   */
+  images?: readonly (readonly [number, number, number])[];
   /** Structure factor, complex. */
   fRe: number;
   fIm: number;

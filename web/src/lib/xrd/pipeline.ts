@@ -238,6 +238,8 @@ export function computeXRDPattern(crystal: Crystal, params: XrdParams): XRDPatte
           d: reportD,
           twoTheta: reportTheta,
           multiplicity: images.length,
+          // The legacy report prints every orbit member in the hkl column.
+          images: images.map((image) => [image[0], image[1], image[2]] as const),
           fRe: f.re,
           fIm: f.im,
           intensity,
