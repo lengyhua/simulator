@@ -26,6 +26,27 @@
  *   space groups 226(Fm-3c) 021 / 227(Fd-3m) 022 ·
  *   NaCl B-matrix 025–032 (Na/Cl thermal factors 1 / 0.5 / 0).
  *
+ * ## 入参口径（哪些是采集件记录的，哪些是推断的）
+ *
+ * 采集件的参数表**明确记录**了：晶体/晶系/空间群、a、λ、F′F″ / Thermal / L-P /
+ * PeakShape 四个开关、q、Occupancy、B。这些字段已逐条复核（见文件末尾
+ * 「入参口径自检」）。
+ *
+ * 以下几项是采集件**没有记录、由本项目推断**的，必须显式声明：
+ *
+ * - **扫描窗口 3–100°**（`createDefaultParams()` 默认值）。采集件不记录扫描范围，
+ *   但它被数据反向定界：各 λ 档「最后被收录的族」与「第一个被排除的族」的夹角
+ *   给出 window，六档取交集为 **[99.71°, 100.35°)**（最紧的两档是 CuKa 1.54178
+ *   的末族 99.71° 与 MoKa 0.71073 的次族 100.35°）。默认值 100° 落在窗口内，
+ *   故所有用例的行数/族数可复现 —— 见末尾 `扫描窗口` 用例。
+ * - **Wyckoff 位置字母**：Al 取 `a`、NaCl 取 Na1+@`a` / Cl1-@`b`，与随包样品
+ *   `data/samples/Al.cord`、`NaCl.cord` 一致。226/227 的 `a` 位由「逐值命中」
+ *   反证（对这两群所有出现的族，8a 与 8b 的 |F|² 恰好相同，故不影响强度）。
+ * - **NaCl 的占位与物种符号**：全部 NaCl 用例占位均为 1，物种为 `Na1+` / `Cl1-`
+ *   （与 `NaCl.cord` 一致）。若采集件未写占位而此处写死 1，末尾自检会报错。
+ * - **q 与 PeakShape 对 single 表无任何影响**（原程序两处都是：峰形只作用于
+ *   powder 曲线）。因此 010–012 的 "q 扫描" 是**不变性检查**，不是 q 的行为验证。
+ *
  * Two cases are NOT pinned yet — see PENDING_CASES at the bottom: the captures
  * 023/024 (space groups 75 P4 / 76 P41) contradict the engine structurally and
  * are waiting on a re-capture from the original program.
@@ -848,6 +869,80 @@ const PENDING_CASES: readonly LegacyCase[] = [
     ],
   },
 ];
+
+/**
+ * 入参口径自检：把「采集件记录 vs 本项目推断」的边界钉住，防止后来者把推断值
+ * 误当成实测值，或改动随包样品后测试静默失真。
+ */
+describe('入参口径自检（记录项 / 推断项）', () => {
+  it('晶体构造与随包样品 .cord 一致（Al 4a，NaCl Na1+@4a / Cl1-@4b）', async () => {
+    const { parseCord } = await import('@/lib/xrd/crystal');
+    const { readFileSync } = await import('node:fs');
+    const path = await import('node:path');
+    const sample = (name: string) =>
+      parseCord(
+        readFileSync(path.resolve(__dirname, '..', '..', 'data', 'samples', name), 'utf8'),
+      );
+
+    // Al：占位 1、B 1 → 与 Al.cord 逐字段一致
+    expect(AL225(1, 1).atoms).toEqual(sample('Al.cord').atoms);
+    expect(AL225(1, 1).sgKey).toBe(sample('Al.cord').sgKey);
+    expect(AL225(1, 1).a).toBeCloseTo(sample('Al.cord').a, 10);
+
+    // NaCl：占位写死 1/1、离子符号与坐标全部沿用 NaCl.cord
+    const naclSample = sample('NaCl.cord');
+    expect(NACL(1, 1).atoms.map((a) => ({ ...a, thermalB: 1 }))).toEqual(naclSample.atoms);
+    expect(NACL(1, 1).a).toBeCloseTo(naclSample.a, 10);
+    expect(naclSample.atoms.map((a) => a.element)).toEqual(['Na1+', 'Cl1-']);
+    expect(naclSample.atoms.map((a) => a.wyckoff)).toEqual(['a', 'b']);
+  });
+
+  it('q 与 PeakShape 对 single 表无影响（故 010–012 是不变性检查）', () => {
+    const base = paramsFor(VERIFIED_CASES[0]);
+    const fingerprint = (patch: Partial<XrdParams>) =>
+      computeSingleXRD(VERIFIED_CASES[0].crystal, { ...base, ...patch })
+        .rows.map((r) => `${r.h},${r.k},${r.l}:${Math.round(r.intensity)}`)
+        .join('|');
+    const ref = fingerprint({});
+    for (const q of [0.2, 0.4, 0.8]) {
+      expect(fingerprint({ q }), `q=${q} 不应改变 single 表`).toBe(ref);
+    }
+    expect(fingerprint({ usePeakShape: false }), 'PeakShape 关不应改变 single 表').toBe(ref);
+  });
+
+  it('扫描窗口 3–100° 落在数据定界的 [99.71°, 100.35°) 内', () => {
+    // 采集件不记录扫描范围；对每个 λ，取「窗口内最后一族」与「窗口外第一族」
+    // 的 2θ —— rangeMax 必须落在二者之间才能复现该档的行数。
+    const al = VERIFIED_CASES[0].crystal; // Al 225, a = 4.0339
+    let lower = 0; // 所有 λ 的「末族 2θ」最大值
+    let upper = Infinity; // 所有 λ 的「次族 2θ」最小值
+    for (const lambda of [1.54056, 1.54178, 1.93604, 0.7193, 0.71073]) {
+      // rangeMax 给到 200° 只是为了枚举出被 100° 截断的那一族
+      const wide = computeSingleXRD(al, {
+        ...paramsFor(VERIFIED_CASES[0]),
+        lambda,
+        rangeMax: 200,
+      });
+      let lastIn = 0;
+      let firstOut = Number.POSITIVE_INFINITY;
+      let prevN = -1;
+      for (const row of wide.rows) {
+        const N = row.h ** 2 + row.k ** 2 + row.l ** 2;
+        if (N === prevN) continue;
+        prevN = N;
+        if (row.twoTheta <= 100) lastIn = row.twoTheta;
+        else if (row.twoTheta < firstOut) firstOut = row.twoTheta;
+      }
+      lower = Math.max(lower, lastIn);
+      upper = Math.min(upper, firstOut);
+    }
+    expect(lower, '各 λ 末族 2θ 上界').toBeGreaterThan(99.7);
+    expect(upper, '各 λ 次族 2θ 下界').toBeLessThan(100.4);
+    expect(createDefaultParams().rangeMax, '默认 rangeMax 必须落在窗口内').toBeGreaterThanOrEqual(lower);
+    expect(createDefaultParams().rangeMax).toBeLessThan(upper);
+    expect(createDefaultParams().rangeMin).toBeLessThan(20); // 低于所有档的首峰
+  });
+});
 
 describe('legacy single-XRD 存档逐值复现（测试即原始数据载体）', () => {
   for (const c of VERIFIED_CASES) {

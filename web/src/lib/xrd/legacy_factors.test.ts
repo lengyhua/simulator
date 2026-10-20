@@ -25,6 +25,18 @@
  *    Pinning three rows per capture (first / middle / last) verifies f₀(s),
  *    the f′/f″ lookup, and the dispersion formula all at once, to the 1e-7
  *    relative accuracy the legacy 32-bit Single printout allows.
+ *
+ * ## 入参口径（记录项 / 推断项）
+ *
+ * 采集件**明确记录**：元素名、靶名与 λ、a1..a5 / c、`DeltaF1` / `DeltaF2`、
+ * 以及 101 行表的四列（2θ、sinθ/λ、F₀、F₀ after F1 & F2）。
+ *
+ * 推断项只有一处，且已被数据反证：
+ * - **b1..b5 的顺序**。原程序把五个指数**全部标成 `b1`**（显示缺陷），采集件里
+ *   只出现 `b1=` 五次。本测试按出现顺序解读为 b1..b5。该解读无需假定——
+ *   若顺序错配，`f₀(s)` 对不上 F₀ 列（残差会放大到百分之几十，而非实测的
+ *   ~1e-7%），所以「F₀ 列吻合」本身就是顺序正确的证明。
+ * - 物种键沿用 RTF 自己写的 `Na1+` / `Cl1-`（与随包 .cord 一致），不做中性化。
  */
 
 import { describe, expect, it } from 'vitest';
