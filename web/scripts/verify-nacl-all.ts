@@ -43,7 +43,7 @@ let maxDevAll = 0;
 let npts = 0;
 for (const id of IDS) {
   const { Bs, FdOpen, peaks } = parseRef(
-    `D:/Projects/CalcXRD/ref-data/single-xrd/${id}.md`,
+    `D:/Projects/CalcXRD/docs/archive/ref-data/single-xrd/${id}.md`,
   );
   const c = parseCord(SAMPLE_CRYSTALS.find((s) => s.id === 'nacl')!.text);
   for (let i = 0; i < c.atoms.length; i++) c.atoms[i].thermalB = Bs[i] ?? 1;

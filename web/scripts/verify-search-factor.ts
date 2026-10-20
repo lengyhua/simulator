@@ -1,6 +1,6 @@
 /**
  * verify-search-factor.ts — cross-check the ported Search Factor (TFormFactor)
- * engine against the legacy RTF reference `ref-data/factors/007-Na+.rtf`.
+ * engine against the legacy RTF reference `docs/archive/ref-data/factors/007-Na+.rtf`.
  *
  * The legacy dialog prints 2θ/s/f₀/f₀+F′+0.5F″²/(f₀+F″) for a chosen element +
  * radiation. We verify `computeSearchFactor` reproduces the RTF row at 2θ=53.00°
@@ -12,7 +12,7 @@ import { computeSearchFactor } from '../src/lib/xrd/cronie';
 const r = computeSearchFactor('Na1+', 'CuKa1', 53.00, 53.00, 0.01);
 const row = r.rows[0];
 
-// RTF reference row (ref-data/factors/007-Na+.rtf, 2θ=53.00)
+// RTF reference row (docs/archive/ref-data/factors/007-Na+.rtf, 2θ=53.00)
 const REF = { s: 0.28963352, f0: 7.049808337, fEff: 7.186880013, dF1: 0.136, dF2: 0.124 };
 
 const pct = (a: number, b: number) => (Math.abs(a - b) / Math.max(1e-9, Math.abs(b))) * 100;

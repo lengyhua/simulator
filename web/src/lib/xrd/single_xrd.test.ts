@@ -17,7 +17,7 @@ import path from 'node:path';
  * legacy M3 form and match the original CalcXRD.exe output to <0.1%.
  *
  * Al (FCC 225, Cu Kα1, B=1) per-N targets from `Al_single.xrd` (legacy
- * GUI export, `ref-data/single-xrd/036_Al-225.md`):
+ * GUI export, `docs/archive/ref-data/single-xrd/036_Al-225.md`):
  *   N=3:100000 N=4:62638 N=8:17760 N=11:9431 N=12:7972 N=16:4964
  */
 const LEGACY_TARGETS: Record<number, number> = {

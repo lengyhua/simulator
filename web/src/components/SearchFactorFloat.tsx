@@ -11,7 +11,7 @@
  *   - **an f₀(2θ) curve** with the legacy's `Max Fo` / `Max Fo (F1 F2)`
  *     readouts (0x475bf4 draws the same curve in the original program);
  *   - a 2θ / s / f₀ / f₀+F′+0.5F″²/(f₀+F″) table, plus a `.txt` export that
- *     reproduces the legacy report layout (ref-data/factors/*.rtf).
+ *     reproduces the legacy report layout (docs/archive/ref-data/factors/*.rtf).
  *
  * The "Fo after F1 & F2" series uses the same scalar formula as the
  * calculation pipeline (byte-confirmed §8.19: denominator f₀+F″).

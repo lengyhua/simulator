@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { parseCord } from './crystal';
 import { f0 } from './cronie';
 import { SAMPLE_CRYSTALS } from '@/data/samples';
-import { getDispersion, hasDispersion, hasDispersionExtended } from './dispersion';
+import {
+  getDispersion,
+  hasDispersion,
+  hasDispersionExtended,
+  hasDispersionFidelity,
+} from './dispersion';
 import { sinThetaOverLambda, structureFactor } from './structure_factor';
 
 const LAMBDA_CU = 1.54056;
@@ -178,5 +183,57 @@ describe('structureFactor — F′F″ 复数式路径', () => {
     const on = structureFactor(nacl, 1, 1, 1, { ...base, useDispersion: true });
     const m = (f: { re: number; im: number }) => Math.hypot(f.re, f.im);
     expect(m(on)).toBeGreaterThan(m(off));
+  });
+});
+
+describe('legacy λ → FF.dat 列映射（§8.28，18 份 Search Factor 存档定案）', () => {
+  // 原程序下拉 6 项各自绑定固定列，与「最近列」无关：
+  //   Kα1 项 → Kα₁ 列；Kα（加权）项 → Kα₂ 列；两个 Fe 项 → Co 列（G5）。
+  // 反例：nearestColumn 会把 CuKa 1.54178 与 MoKa 0.71073 都判到 Kα₁ 列
+  // （它们离 Kα₁ 更近），并把 FeKa 1.93736 判为不支持（Δλ≈0.15 > 0.05）。
+  const LEGACY: ReadonlyArray<{
+    item: string;
+    lambda: number;
+    fPrime: number;
+    fDoublePrime: number;
+  }> = [
+    { item: 'CuKa1', lambda: 1.54056, fPrime: 0.212, fDoublePrime: 0.246 },
+    { item: 'CuKa', lambda: 1.54178, fPrime: 0.213, fDoublePrime: 0.246 },
+    { item: 'MoKa1', lambda: 0.7193, fPrime: 0.064, fDoublePrime: 0.052 },
+    { item: 'MoKa', lambda: 0.71073, fPrime: 0.065, fDoublePrime: 0.052 },
+    { item: 'FeKa1', lambda: 1.93604, fPrime: 0.279, fDoublePrime: 0.381 },
+    { item: 'FeKa', lambda: 1.93736, fPrime: 0.279, fDoublePrime: 0.382 },
+  ];
+
+  for (const t of LEGACY) {
+    it(`Al / ${t.item} (${t.lambda}) → f′=${t.fPrime} f″=${t.fDoublePrime}`, () => {
+      const r = getDispersion('Al', t.lambda, 'fidelity');
+      expect(r.supported).toBe(true);
+      expect(r.fPrime).toBe(t.fPrime);
+      expect(r.fDoublePrime).toBe(t.fDoublePrime);
+      // UI 灰化判定必须同步：否则复选框置灰而引擎仍在修正。
+      expect(hasDispersionFidelity(t.lambda)).toBe(true);
+    });
+  }
+
+  it('加权项确实读 Kα₂ 列（与 Kα₁ 项不同值，可证伪最近列口径）', () => {
+    const cu1 = getDispersion('Al', 1.54056, 'fidelity');
+    const cuW = getDispersion('Al', 1.54178, 'fidelity');
+    expect(cuW.fPrime).not.toBe(cu1.fPrime); // Kα₂ 列 0.213 ≠ Kα₁ 列 0.212
+    const mo1 = getDispersion('Al', 0.7193, 'fidelity');
+    const moW = getDispersion('Al', 0.71073, 'fidelity');
+    expect(moW.fPrime).not.toBe(mo1.fPrime); // Kα₂ 列 0.065 ≠ Kα₁ 列 0.064
+  });
+
+  it('FeKa (1.93736) 不再是 unsupported —— 曾使整表低 0.34%', () => {
+    // 回归守卫：LAMBDA_TOLERANCE = 0.05 远小于 Δλ(Co, Fe) ≈ 0.148，
+    // 因此必须靠显式 legacy 映射表，不能靠最近列。
+    expect(hasDispersion(1.93736)).toBe(false); // 最近列口径仍为 false（含 G5 前的行为）
+    expect(getDispersion('Al', 1.93736, 'fidelity').supported).toBe(true);
+  });
+
+  it('非 legacy 波长仍走最近列（Cr Kα 依旧不支持）', () => {
+    expect(getDispersion('Cr', 2.2897, 'fidelity').supported).toBe(false);
+    expect(hasDispersionFidelity(2.2897)).toBe(false);
   });
 });

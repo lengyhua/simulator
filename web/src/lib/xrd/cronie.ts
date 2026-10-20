@@ -254,7 +254,7 @@ export function searchFactorMaxima(
 
 /**
  * Renders the Search Factor dialog's report text — the layout the legacy
- * program writes (`ref-data/factors/007-Na+.rtf`): element/target header,
+ * program writes (`docs/archive/ref-data/factors/007-Na+.rtf`): element/target header,
  * the a/b/c coefficient block, ΔF1/ΔF2, the Max Fo readouts, then the
  * `2theta / sin(theta)/lamda / Fo / Fo after F1 & F2` value table.
  *

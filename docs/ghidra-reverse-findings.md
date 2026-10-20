@@ -82,7 +82,7 @@ fstp dword [ebx+esi*4+0x3e92c]       ; ★ 存为 Single（32 位）
 | RTF 报表同式 | `001-Al.rtf` 三行对照残差 4.3e-8（= 报表 %.9f 截断） |
 | Ce 缺陷外部校验 | IUCr CIF `dispersion_imag_cu` Ce f″=9.648 ↔ FF.dat 9.67 |
 | Er 缺陷外部校验 | IUCr CIF Er f″=3.937 ↔ FF Kα₂ 3.948（Δ0.011），Kα₁ 9.943 差 5.995 |
-| 岩盐计相位 | `ref-data/single-xrd/025_NaCl-225.md`：111 族 = 6829（最弱）、200 = 100000 |
+| 岩盐计相位 | `docs/archive/ref-data/single-xrd/025_NaCl-225.md`：111 族 = 6829（最弱）、200 = 100000 |
 | 导出落盘 | headless Edge + CDP：`Al.xrd` 184417 B，`downloadProgress state:"completed"` |
 
 ---

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Definitive test of which intensity model reproduces the MoKα1 Fd-on/off
-pair (ref-data/Al-temp section 2 vs 3) for Al, B=1, Thermal/L-P/PS all on.
+pair (docs/archive/ref-data/Al-temp section 2 vs 3) for Al, B=1, Thermal/L-P/PS all on.
 
 Ratio I_on/I_off(hkl) = [f_on(hkl)/f_off(hkl)]²  — DW/mult/Lp cancel
 (both records have identical B, L-P, PeakShape; only F′F″ differs).
@@ -12,7 +12,7 @@ import csv, math, struct
 LAMBDA_Mo = 0.71930   # MoKa1, legacy hardcoded value (docs §2.10 G6 typo kept)
 A = 4.0339
 
-# Measured MoKα1 pair (ref-data/Al-temp)
+# Measured MoKα1 pair (docs/archive/ref-data/Al-temp)
 PKS = [(3,17.770,'111'),(4,20.540,'200'),(8,29.210,'220'),(11,34.400,'311'),
        (12,35.980,'222'),(16,41.790,'400'),(19,45.740,'331'),(20,47.000,'224')]
 I_on  = [100000, 64894, 20349, 10801,  8939, 4505, 2848, 2465]  # Fd on

@@ -137,7 +137,7 @@ describe('f0 — 与 IUCr 交叉校验（旧表仅作参照，不参与运行时
 });
 
 describe('computeSearchFactor — legacy Search Factor 对话框（§8.19/§8.20，2026-10-19 C3 已裁决：移植为 UI 组件）', () => {
-  it('Na1+ @ CuKa1, 2θ=53.00° 与 ref-data/007-Na+.rtf 逐值对照 0.0000%', () => {
+  it('Na1+ @ CuKa1, 2θ=53.00° 与 docs/archive/ref-data/factors/007-Na+.rtf 逐值对照 0.0000%', () => {
     // 007-Na+.rtf: 2θ=53.00 s=0.28963352 f0=7.049808337 fEff=7.186880013
     //              ΔF1=0.136 ΔF2=0.124
     const result = computeSearchFactor('Na1+', 'CuKa1', 53.00, 53.00, 0.01);

@@ -1,6 +1,6 @@
 /**
  * End-to-end verification: web engine vs. legacy Al B-scan ref-data
- * (ref-data/single-xrd 005/004/003/002, CuKα1, Fd ON, B = 0/0.4/0.6/0.8).
+ * (docs/archive/ref-data/single-xrd 005/004/003/002, CuKα1, Fd ON, B = 0/0.4/0.6/0.8).
  *
  * 定案 7 (2026-10-19): 111-normalized cross-B ratio
  *   I(N,B)/I(N,0) = exp(−2B(N−3)/(4a²))

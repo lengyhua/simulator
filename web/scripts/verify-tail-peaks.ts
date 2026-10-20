@@ -34,7 +34,7 @@ const IDS = ['025_NaCl-225','026_NaCl-225','027_NaCl-225','028_NaCl-225','029_Na
 let maxDevAll = 0;
 let npts = 0;
 for (const id of IDS) {
-  const { Bs, FdOpen, peaks } = parseRef(`D:/Projects/CalcXRD/ref-data/single-xrd/${id}.md`);
+  const { Bs, FdOpen, peaks } = parseRef(`D:/Projects/CalcXRD/docs/archive/ref-data/single-xrd/${id}.md`);
   const c = parseCord(SAMPLE_CRYSTALS.find((s) => s.id === 'nacl')!.text);
   for (let i = 0; i < c.atoms.length; i++) c.atoms[i].thermalB = Bs[i] ?? 1;
   const { rows } = computeSingleXRD(c, { ...createDefaultParams(), lambda: 1.54056, useAnomalous: FdOpen });

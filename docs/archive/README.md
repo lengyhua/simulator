@@ -14,6 +14,24 @@
 | `DATA-REORGANIZATION.md` | `docs/DATA-REORGANIZATION.md` | 2026-10-16 文档整理操作记录（过程） | 导航 → [`../DATA-REFERENCE.md`](../DATA-REFERENCE.md) §2 |
 | `dispersion-al-settlement.md` | `docs/dispersion-al-settlement.md` | Al 色散公式定案 + B 值纠错的过程推导 | → [`../SETTLED.md`](../SETTLED.md) §3（色散/DW）§6（默认参数） |
 | `single-xrd-formula-audit.md` | `docs/single-xrd-formula-audit.md` | single 强度公式审计（含早期残差分析） | → [`../SETTLED.md`](../SETTLED.md) §3.3/§3.4 与 §8 |
+| **`ref-data/`**（54 个原始采集文件） | `ref-data/` | 2026-10-20 定案「**以测试记录原始数据**」：全部参考值已转写进测试，采集件不再参与查阅与比对 | → `web/src/lib/xrd/legacy_refdata.test.ts`（36 条 single-XRD 存档逐值）与 `web/src/lib/xrd/legacy_factors.test.ts`（18 份 Search Factor）；定案 → [`../SETTLED.md`](../SETTLED.md) §8.28/§8.29 与 §9 |
+
+## `ref-data/` 归档说明（2026-10-20）
+
+原 `ref-data/` 下的 54 个文件是原程序 `CalcXRD.exe` 的**人工采集件**
+（`single-xrd/` 36 份 single-XRD 输出记录、`factors/` 18 份 Search Factor 窗口读数），
+曾作为定案 XRD 参数的对照基准。
+
+用户定案：**原始采集件不再保留为活跃数据，改由测试承载原始值**——
+「以后就以测试来记录原始数据文件，方便进行验证」。因此：
+
+- 全部逐值基准已转写进两个测试文件（含每个用例的 `ref:` 溯源字段指向本目录对应文件）；
+- 本目录仅作**溯源留档**，任何测试都不读取它（`grep -r "ref-data" web/src` 只剩注释中的溯源路径）；
+- 新增对照请直接往测试里加用例，不要再往本目录加文件。
+
+采集件本身有两处**已知不可信**（详见 `SETTLED.md` §8.28/§8.29）：
+`018_Al-225.md` 的 λ 标注应为 Fe Kα 加权 1.93736（非 1.93604）；
+`023_Al-75.md` / `024_Al-76.md` 的表体与 225 输出逐字节相同，不描述 75/76 群的行为。
 
 > **保留未归档**：[`../audits/`](../audits/) 三份 2026-10-16 专家评审
 > （`physics-audit` / `ff-dat-validation` / `intensity-uncertainty-review`）。

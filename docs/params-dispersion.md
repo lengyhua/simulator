@@ -97,7 +97,7 @@ $$f_{\text{legacy}} = f_0 + f' + \frac{0.5\,f''^2}{f_0 + f''}\qquad\text{（分�
 → 代码分母用 f″ 是独立于 help 的实现细节（疑作者笔误，保真优先应复现）。**fidelity 模式若追求逐位复刻，需按 legacy 标量式 + DW 乘整项实现**（是否纳入见 `DATA-REFERENCE.md` §5.1 开放项）；现行复数式与 legacy 的强度差量级：单原子 ≤0.4%，多物种弱峰更大。
 
 **RTF 报表口径（2026-10-19 定案，`ghidra-reverse-findings.md` §8.19）**：
-`ref-data/factors/001-Al.rtf`「Fo after F1 & F2」列与计算管线**同式**
+`docs/archive/ref-data/factors/001-Al.rtf`「Fo after F1 & F2」列与计算管线**同式**
 （分母 f₀+F″），`001-Al.rtf` 三行数值对照残差 4.3e-8（= 报表 `%.9f`
 显示截断）；早期「报表故意用 help (5) 字面（分母 f₀+F′）」的说法已作废。
 help RTF 公式 (5) 字面分母 f₀+F′ 与程序实际实现（f₀+F″）确有差异，

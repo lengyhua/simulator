@@ -2,7 +2,7 @@
 """Al F′F″ on/off numeric cross-check (033 待办 #1).
 
 Goal: decide which anomalous-dispersion formula CalcXRD.exe implements,
-using ref-data/single-xrd controlled records.
+using docs/archive/ref-data/single-xrd controlled records.
 
 Ground-truth data (measured legacy program output):
   005 = F′F″ off, Thermal on,  L-P on, PeakShape on, q=0.1, Occup=1, B=1
@@ -26,7 +26,7 @@ of the normalization scale.
 
 Sources: FF.dat Al CuKα1 = F′=0.212 F″=0.246 (docs/data/ff_dat.csv,
 verified against raw FF.dat bytes); Factor.dat Al a1..b5,c
-(docs/data/factor_dat.csv); ground truth in ref-data/single-xrd/001..009.
+(docs/data/factor_dat.csv); ground truth in docs/archive/ref-data/single-xrd/001..009.
 """
 import csv, math, struct
 

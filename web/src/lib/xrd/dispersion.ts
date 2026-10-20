@@ -103,17 +103,58 @@ function nearestColumn(lambda: number): { index: number; delta: number } {
  * to it.
  */
 const FE_KA1_LAMBDA = 1.93604;
+const FE_KA_WEIGHTED_LAMBDA = 1.93736;
 
 /**
- * Column index for fidelity-mode lookup. Returns the Co Kα1 column index
- * when the wavelength matches Fe Kα1 within 1e-4 Å (the G5 quirk);
- * otherwise the plain nearest column.
+ * Legacy λ dropdown item → FF.dat column, pinned 2026-10-20 by the 18 archived
+ * "Search Factor" captures (`docs/archive/ref-data/factors/*.rtf`), each of which prints the
+ * program's own `DeltaF1` / `DeltaF2` readout. Those readouts reproduce FF.dat
+ * to the last printed digit, and they expose TWO loader rules that
+ * "nearest column" gets wrong:
+ *
+ *   1. the Kα (intensity-weighted) items read the **Kα₂** column, not Kα₁ —
+ *      Al: CuKa1 0.212/0.246 vs CuKa 0.213/0.246; MoKa1 0.064/0.052 vs
+ *      MoKa 0.065/0.052; FeKa1 0.279/0.381 vs FeKa 0.279/0.382. Nearest-column
+ *      would send CuKa 1.54178 and MoKa 0.71073 to the Kα₁ column (both are
+ *      nearer to it than to Kα₂).
+ *   2. both Fe Kα items read a **Co** column (the G5 loader bug):
+ *      FeKa1 → Co Kα₁, FeKa → Co Kα₂. Numerically impossible to guess from λ
+ *      (Δλ ≈ 0.15 Å, far outside any sane tolerance).
+ *
+ * The Mo pair is the nastiest: the legacy "MoKa1" item carries the 0.71930
+ * typo while "MoKa" carries 0.71073 — i.e. the *weighted* item is the one
+ * closer to the physical Mo Kα₁ wavelength, yet it is the one that reads the
+ * Kα₂ column.
+ */
+const LEGACY_TARGET_COLUMNS: ReadonlyArray<{ lambda: number; column: string }> = [
+  { lambda: 1.54056, column: 'CuKa1' },
+  { lambda: 1.54178, column: 'CuKa2' },
+  { lambda: 0.7193, column: 'MoKa1' },
+  { lambda: 0.71073, column: 'MoKa2' },
+  { lambda: FE_KA1_LAMBDA, column: 'CoKa1' },
+  { lambda: FE_KA_WEIGHTED_LAMBDA, column: 'CoKa2' },
+];
+
+/** True for either legacy Fe Kα dropdown item (G5 Co-column quirk applies). */
+function isLegacyFeKa(lambda: number): boolean {
+  return Math.abs(lambda - FE_KA1_LAMBDA) < 1e-4 || Math.abs(lambda - FE_KA_WEIGHTED_LAMBDA) < 1e-4;
+}
+
+/** Column index for a legacy dropdown λ, or −1 when λ is not one of the six. */
+function legacyTargetColumn(lambda: number): number {
+  const keys = Object.keys(FF_LAMBDAS);
+  const hit = LEGACY_TARGET_COLUMNS.find((t) => Math.abs(lambda - t.lambda) < 1e-4);
+  return hit ? keys.indexOf(hit.column) : -1;
+}
+
+/**
+ * Column index for fidelity-mode lookup: the legacy dropdown mapping when λ is
+ * one of the six legacy items, otherwise the plain nearest column (web-only
+ * wavelengths such as Cr Kα, Co Kα, Ti/Al Kα).
  */
 function fidelityColumn(lambda: number): number {
-  if (Math.abs(lambda - FE_KA1_LAMBDA) < 1e-4) {
-    return Object.keys(FF_LAMBDAS).indexOf('CoKa1');
-  }
-  return nearestColumn(lambda).index;
+  const legacy = legacyTargetColumn(lambda);
+  return legacy >= 0 ? legacy : nearestColumn(lambda).index;
 }
 
 /**
@@ -130,6 +171,22 @@ export function hasDispersion(lambda: number): boolean {
     return false;
   }
   return nearestColumn(lambda).delta <= LAMBDA_TOLERANCE;
+}
+
+/**
+ * Fidelity-mode coverage check — the one the UI must use to gate the F′F″
+ * checkbox. Unlike {@link hasDispersion} (plain nearest-column, no quirks)
+ * this includes the G5 Fe Kα quirk for BOTH legacy Fe Kα dropdown items
+ * (1.93604 "FeKa1" and 1.93736 "FeKa"), because {@link getDispersion} really
+ * does return Co-column f′/f″ for them in fidelity mode. Without this, the
+ * checkbox would be greyed out for a wavelength the engine still corrects
+ * for — and the Fe Kα weighted table would silently run 0.34% low.
+ */
+export function hasDispersionFidelity(lambda: number): boolean {
+  if (!Number.isFinite(lambda) || lambda <= 0) {
+    return false;
+  }
+  return isLegacyFeKa(lambda) || nearestColumn(lambda).delta <= LAMBDA_TOLERANCE;
 }
 
 /**
@@ -176,9 +233,13 @@ export function getDispersion(
   // Fidelity mode uses the G5-corrected column (Fe Kα1 → Co Kα1); extended
   // mode falls through to the plain nearest column for its FF.dat pass.
   const col = mode === 'fidelity' ? fidelityColumn(lambda) : nearestColumn(lambda).index;
-  const delta = mode === 'fidelity' && Math.abs(lambda - FE_KA1_LAMBDA) < 1e-4
-    ? 0 // G5 quirk: legacy reads Co Kα1 by design for Fe Kα1, so treat as in-coverage
-    : Math.abs(Object.values(FF_LAMBDAS)[col] - lambda);
+  // A legacy dropdown λ is in-coverage by definition — the loader switch maps
+  // it to its column regardless of how far that column's own λ is (the two Fe
+  // Kα items sit ~0.15 Å from the Co columns they actually read).
+  const delta =
+    mode === 'fidelity' && legacyTargetColumn(lambda) >= 0
+      ? 0
+      : Math.abs(Object.values(FF_LAMBDAS)[col] - lambda);
 
   const ffSupported =
     Number.isFinite(lambda) && lambda > 0 && zIndex >= 0 && delta <= LAMBDA_TOLERANCE;

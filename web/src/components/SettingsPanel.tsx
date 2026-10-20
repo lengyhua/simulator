@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 
 import { LAMBDA_TABLE, CUSTOM_LAMBDA_PRESETS } from '@/lib/xrd/constants';
-import { hasDispersion, hasDispersionExtended } from '@/lib/xrd/dispersion';
+import { hasDispersionExtended, hasDispersionFidelity } from '@/lib/xrd/dispersion';
 import type { XrdParams } from '@/lib/xrd/types';
 import { useCrystalStore } from '@/store/crystal-store';
 
@@ -58,18 +58,16 @@ export function SettingsPanel() {
 
   // F′F″ dispersion is only tabulated for Cu/Mo/Co Kα in FF.dat (fidelity mode).
   // In extended mode, Cr/Fe Kα are supported via LBNL Henke f″ (f′=0 approx).
-  // G5 quirk (§1/G5, FUN_0047907c): in fidelity mode Fe Kα1 secretly maps to
-  // the Co Kα1 column of FF.dat, so Fe Kα1 is NOT unsupported — the UI stays
-  // enabled for it (no grey-out), matching the shipped program's behavior.
-  // Cr Kα remains unsupported (no column within 0.05 Å in either mode).
+  // G5 quirk (§1/G5, FUN_0047907c): in fidelity mode BOTH legacy Fe Kα
+  // dropdown items (FeKa1 1.93604 and FeKa 1.93736) secretly map to the Co Kα1
+  // column of FF.dat — pinned by docs/archive/ref-data/single-xrd/018_Al-225.md, whose 2θ
+  // pins λ = 1.93736 while its intensities carry the full Co-column correction.
+  // So neither is "unsupported" and the UI stays enabled for both, matching the
+  // shipped program. Cr Kα remains unsupported (no column within 0.05 Å).
   const isExtended = params.dispersionMode === 'extended';
-  // Fidelity: in-coverage = plain nearest-column hit (Cu/Mo/Co Kα1+Kα2)
-  // OR the G5 Fe Kα1 quirk (legacy loader reads Co Kα1 for it).
-  const FE_KA1 = 1.93604;
-  const feKa1Quirk = !isExtended && Math.abs(params.lambda - FE_KA1) < 1e-4;
   const dispersionSupported = isExtended
     ? hasDispersionExtended(params.lambda)
-    : hasDispersion(params.lambda) || feKa1Quirk;
+    : hasDispersionFidelity(params.lambda);
 
   /** Applies a param patch and recomputes right away when possible. */
   const apply = useCallback(

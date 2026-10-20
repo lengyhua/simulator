@@ -145,12 +145,14 @@ evidence in `docs/audits/ff-dat-validation.md`). Known defects: Z=91 name is
 mislabelled `Po` (must index by Z, not symbol); Ce (Z=58) Cu Kα1 f′ = −1.087
 is a confirmed data-entry defect (kept faithful).
 
-### `ref-data/` — 定位 XRD 参数的参考数据（人添）
+### `docs/archive/ref-data/` — 原程序采集件（已归档，仅供溯源）
 
-存放本项目**人工添加**的参考数据（原程序输出记录、对照表、抄录系数等），
-用于辅助定案当前重实现的 XRD 计算参数。按用途分子目录（如 `single-xrd/`），
-组织与登记约定见 `ref-data/README.md`。与根目录 `.dat`（原程序输入数据源，不动）、
-`docs/data/*.csv`（解码镜像）、`references/`（外部权威源）边界明确。
+原 `ref-data/`：36 份 single-XRD 输出记录 + 18 份 Search Factor 窗口读数，均为操作
+`CalcXRD.exe` 人工采集。2026-10-20 定案**「以测试记录原始数据」**：全部逐值已转写进
+`web/src/lib/xrd/legacy_refdata.test.ts`（36 条，逐值对照）与
+`web/src/lib/xrd/legacy_factors.test.ts`（18 条 Search Factor），采集件不再被任何测试读取。
+新增对照**直接加测试用例**，不要再往该目录加文件。
+两处采集件缺陷见 `docs/SETTLED.md` §8.28（018 的 λ 标注）/ §8.29（023、024 不可信）。
 
 ### `help` — embedded RTF help document
 
